@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Target, 
-  FolderKanban, 
-  CheckSquare, 
-  Calendar, 
-  FileText, 
-  Repeat, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Target,
+  FolderKanban,
+  CheckSquare,
+  Calendar,
+  FileText,
+  Repeat,
+  BarChart3,
   Settings,
   Database,
   Plus,
@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
-        <div 
+        <div
           onClick={() => setMobileMenuOpen(false)}
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
         />
@@ -84,9 +84,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container: Charcoal Dark Theme (Abu Dark), Full Viewport Height */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-[#181b20] border-r border-[#262b34] flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 ${
-          mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
-        }`}
+        className={`fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-[#181b20] border-r border-[#262b34] flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 ${mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+          }`}
       >
         <div className="flex flex-col h-full overflow-y-auto p-4">
           {/* Brand & Workspace Header */}
@@ -97,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-white tracking-tight truncate">
-                  {settings?.businessName || 'Mahada Indonesia'}
+                  {settings?.businessName || 'Personal Project'}
                 </p>
                 <p className="text-[10px] text-zinc-400 truncate">
                   {settings?.userName || 'Executive Hub'}
@@ -156,20 +155,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleSelect(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors group cursor-pointer ${
-                    isActive
-                      ? 'bg-[#252932] text-white shadow-xs border border-[#373e4b]'
-                      : 'text-zinc-400 hover:text-white hover:bg-[#20232a]'
-                  }`}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors group cursor-pointer ${isActive
+                    ? 'bg-[#252932] text-white shadow-xs border border-[#373e4b]'
+                    : 'text-zinc-400 hover:text-white hover:bg-[#20232a]'
+                    }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
                     <span className="truncate">{item.label}</span>
                   </div>
                   {item.badge !== undefined && (
-                    <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${
-                      isActive ? 'bg-[#333a47] text-zinc-200' : 'bg-[#131518] text-zinc-400 border border-[#2a2f39]'
-                    }`}>
+                    <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${isActive ? 'bg-[#333a47] text-zinc-200' : 'bg-[#131518] text-zinc-400 border border-[#2a2f39]'
+                      }`}>
                       {item.badge}
                     </span>
                   )}
