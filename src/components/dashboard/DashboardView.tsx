@@ -73,7 +73,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const taskCompletionRate = tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
   const completedRoutinesToday = routines.filter(r => r.completedDates.includes(todayStr)).length;
   const routineCompletionRate = routines.length > 0 ? (completedRoutinesToday / routines.length) * 100 : 0;
-  const productivityScore = Math.min(100, Math.round((taskCompletionRate * 0.5) + (routineCompletionRate * 0.5) + 30));
+  const productivityScore = (tasks.length === 0 && routines.length === 0)
+    ? 0
+    : Math.min(100, Math.round((taskCompletionRate * 0.5) + (routineCompletionRate * 0.5) + (tasks.length > 0 ? 30 : 0)));
 
   // Handle task quick checkbox toggle
   const handleToggleTask = async (task: Task) => {
@@ -295,7 +297,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {todaysTasks.length === 0 ? (
               <div className="py-8 text-center text-xs text-zinc-400">
-                Luar biasa! Semua tugas prioritas hari ini telah diselesaikan.
+                {tasks.length === 0 
+                  ? 'Belum ada tugas operasional. Tambahkan tugas cepat di atas untuk memulai.' 
+                  : 'Luar biasa! Semua tugas prioritas hari ini telah diselesaikan.'}
               </div>
             ) : (
               <div className="divide-y divide-zinc-800/60 mt-1">
@@ -374,8 +378,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
 
-            <div className="space-y-4 mt-4">
-              {goals.slice(0, 3).map((goal) => {
+            {goals.length === 0 ? (
+              <div className="py-8 text-center text-xs text-zinc-400">
+                Belum ada sasaran strategis bisnis. Klik <strong>Kelola Sasaran</strong> untuk membuat sasaran pertama.
+              </div>
+            ) : (
+              <div className="space-y-4 mt-4">
+                {goals.slice(0, 3).map((goal) => {
                 const percent = Math.min(100, Math.round((goal.currentValue / goal.targetValue) * 100));
                 const childProjects = projects.filter(p => p.goalId === goal.id);
 
@@ -428,7 +437,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 );
               })}
             </div>
-          </div>
+          )}
+        </div>
         </div>
 
         {/* Right Column (1 Col): Today's Schedule & Executive Routines */}

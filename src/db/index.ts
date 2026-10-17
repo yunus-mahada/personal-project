@@ -35,6 +35,15 @@ export class MahadaDatabase extends Dexie {
 
 export const db = new MahadaDatabase();
 
+export async function clearAllBusinessData() {
+  await db.goals.clear();
+  await db.projects.clear();
+  await db.tasks.clear();
+  await db.calendarEvents.clear();
+  await db.notes.clear();
+  await db.routines.clear();
+}
+
 export async function initializeDatabase() {
   const settingsCount = await db.settings.count();
   if (settingsCount === 0) {
@@ -54,13 +63,25 @@ export async function initializeDatabase() {
       }
     }
   }
+
+  // Otomatis bersihkan sisa data dummy bawaan dari IndexedDB browser yang tersimpan sebelumnya
+  try {
+    const CLEANUP_KEY = 'mahada_dummy_purged_v1';
+    if (!localStorage.getItem(CLEANUP_KEY)) {
+      const hasDummyGoal = await db.goals.get('goal-1');
+      const hasDummyProject = await db.projects.get('proj-1');
+      if (hasDummyGoal || hasDummyProject) {
+        await clearAllBusinessData();
+      }
+      localStorage.setItem(CLEANUP_KEY, 'true');
+    }
+  } catch (err) {
+    console.error('Auto-purge error:', err);
+  }
 }
 
 export async function seedInitialData() {
-  const now = new Date();
-  const todayStr = '2026-10-16'; // Current anchor date
-
-  // 1. Initial Settings
+  // Hanya inisialisasi pengaturan dasar (Profil & Kategori Bisnis) tanpa data dummy bisnis
   const defaultSettings: UserSettings = {
     id: 'user_default',
     userName: 'Yunus Mahada',
@@ -72,8 +93,11 @@ export async function seedInitialData() {
     goalCategories: DEFAULT_GOAL_CATEGORIES
   };
   await db.settings.put(defaultSettings);
+}
 
-  // 2. Initial Goals
+export async function seedSampleDemoData() {
+  const now = new Date();
+  const todayStr = '2026-10-16'; // Anchor date
   const sampleGoals: Goal[] = [
     {
       id: 'goal-1',
@@ -525,13 +549,12 @@ export async function seedInitialData() {
 }
 
 export async function resetDatabaseWithSamples() {
-  await db.goals.clear();
-  await db.projects.clear();
-  await db.tasks.clear();
-  await db.calendarEvents.clear();
-  await db.notes.clear();
-  await db.routines.clear();
-  await seedInitialData();
+  await clearAllBusinessData();
+  await seedSampleDemoData();
+}
+
+export async function resetDatabaseToClean() {
+  await clearAllBusinessData();
 }
 
 export async function exportDatabaseBackup(): Promise<string> {

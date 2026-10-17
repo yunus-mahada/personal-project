@@ -20,7 +20,13 @@ import {
   Info
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, exportDatabaseBackup, importDatabaseBackup, resetDatabaseWithSamples } from '../../db';
+import { 
+  db, 
+  exportDatabaseBackup, 
+  importDatabaseBackup, 
+  resetDatabaseWithSamples, 
+  resetDatabaseToClean 
+} from '../../db';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { DEFAULT_GOAL_CATEGORIES } from '../../types';
 import { 
@@ -65,6 +71,7 @@ export const SettingsView: React.FC = () => {
   // General Notifications & Confirmations
   const [notice, setNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -208,10 +215,17 @@ export const SettingsView: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleExecuteClear = async () => {
+    await resetDatabaseToClean();
+    setShowClearConfirm(false);
+    setNotice({ text: 'Seluruh data bisnis telah dikosongkan. Sistem sekarang bersih 100%!', type: 'success' });
+    setTimeout(() => setNotice(null), 4000);
+  };
+
   const handleExecuteReset = async () => {
     await resetDatabaseWithSamples();
     setShowResetConfirm(false);
-    setNotice({ text: 'Database berhasil direset dengan data bisnis resmi Mahada Indonesia!', type: 'success' });
+    setNotice({ text: 'Database berhasil diisi dengan data percontohan demo Mahada Indonesia!', type: 'success' });
     setTimeout(() => setNotice(null), 4000);
   };
 
@@ -669,45 +683,83 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Danger Zone: Reset with Samples */}
+          {/* 4. Danger Zone: Database Reset & Clean Slate */}
           <div className="rounded-2xl bg-zinc-900 border border-rose-900/60 p-6 shadow-xs">
             <h2 className="text-sm font-semibold text-rose-400 mb-2 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-500" />
-              <span>Zona Pemulihan Database</span>
+              <span>Zona Pemulihan & Pembersihan Database</span>
             </h2>
-            <p className="text-xs text-zinc-400 mb-4">
-              Ingin mengatur ulang database dan memuat ulang data percontohan bisnis Mahada Indonesia? Tindakan ini akan menggantikan data yang telah Anda modifikasi.
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Gunakan opsi di bawah ini untuk mengosongkan seluruh data dummy bawaan agar siap diisi dengan data operasional riil bisnis Anda, atau memuat kembali data demo contoh jika diperlukan.
             </p>
 
-            {!showResetConfirm ? (
-              <button
-                onClick={() => setShowResetConfirm(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-rose-400 bg-rose-950/40 hover:bg-rose-950/70 border border-rose-800/80 rounded-lg transition cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Reset ke Data Contoh Mahada Indonesia</span>
-              </button>
-            ) : (
-              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-800 space-y-3">
-                <p className="text-xs text-rose-300 font-medium">
-                  Konfirmasi: Seluruh data saat ini akan digantikan dengan data percontohan resmi Mahada Indonesia. Lanjutkan?
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleExecuteReset}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition shadow-xs cursor-pointer"
-                  >
-                    Ya, Reset Database
-                  </button>
-                  <button
-                    onClick={() => setShowResetConfirm(false)}
-                    className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 rounded-lg transition cursor-pointer"
-                  >
-                    Batal
-                  </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Button 1: Kosongkan Data (Clean Slate) */}
+              {!showClearConfirm ? (
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition shadow-xs cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Kosongkan Seluruh Data (Fresh Start)</span>
+                </button>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-rose-950/70 border border-rose-700 space-y-2.5 w-full">
+                  <p className="text-xs text-rose-200 font-medium">
+                    ⚠️ <strong>Konfirmasi:</strong> Anda akan menghapus seluruh data Sasaran (Goals), Proyek, Tugas, Kalender, Catatan, dan Rutinitas. Profil & Kategori Bisnis Anda akan tetap disimpan. Lanjutkan?
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExecuteClear}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition shadow-xs cursor-pointer"
+                    >
+                      Ya, Kosongkan Sekarang
+                    </button>
+                    <button
+                      onClick={() => setShowClearConfirm(false)}
+                      className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Button 2: Muat Data Demo (Hanya tampil jika tidak sedang konfirmasi) */}
+              {!showClearConfirm && (
+                <>
+                  {!showResetConfirm ? (
+                    <button
+                      onClick={() => setShowResetConfirm(true)}
+                      className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Muat Contoh Data Demo</span>
+                    </button>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-700 space-y-2.5 w-full">
+                      <p className="text-xs text-zinc-300 font-medium">
+                        Muat data contoh demo Mahada Indonesia? Data buatan Anda akan ditimpa dengan data percontohan demo.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleExecuteReset}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-xs cursor-pointer"
+                        >
+                          Ya, Muat Data Demo
+                        </button>
+                        <button
+                          onClick={() => setShowResetConfirm(false)}
+                          className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 rounded-lg transition cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
