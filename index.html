@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <script>
+      // Gracefully silence harmless Vite client WebSocket send errors when HMR is disabled in iframe
+      window.addEventListener('error', function (event) {
+        if (event && event.message && (event.message.includes("reading 'send'") || event.message.includes('WebSocket closed'))) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function (event) {
+        if (event && event.reason && String(event.reason).includes("reading 'send'")) {
+          event.preventDefault();
+        }
+      }, true);
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Mahada Indonesia — Personal Business Project Manager</title>
+    <meta name="description" content="Aplikasi manajemen proyek bisnis personal & produktivitas Mahada Indonesia dengan arsitektur PWA offline-first, pelacakan Goal-Project-Task, kalender bisnis, dan analitik performa." />
+    <meta property="og:title" content="Mahada Indonesia — Personal Business Project Manager" />
+    <meta property="og:description" content="Aplikasi manajemen proyek bisnis personal & produktivitas Mahada Indonesia dengan arsitektur PWA offline-first, pelacakan Goal-Project-Task, kalender bisnis, dan analitik performa." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#181b20" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mahada" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-[#121316] text-zinc-100 antialiased selection:bg-blue-600 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

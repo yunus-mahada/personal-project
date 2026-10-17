@@ -1,0 +1,6 @@
+{
+  "name": "Mahada Indonesia - Personal Business Project Manager",
+  "description": "Aplikasi manajemen proyek bisnis personal & produktivitas Mahada Indonesia dengan arsitektur PWA offline-first, pelacakan Goal-Project-Task, kalender bisnis, dan analitik performa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

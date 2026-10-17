@@ -1,0 +1,518 @@
+import React, { useState } from 'react';
+import { 
+  CheckSquare, 
+  Plus, 
+  Kanban, 
+  Table as TableIcon, 
+  Grid2X2, 
+  Search, 
+  Circle, 
+  CheckCircle2, 
+  Edit3, 
+  Trash2
+} from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import confetti from 'canvas-confetti';
+import { db } from '../../db';
+import type { Task, TaskStatus, TaskPriority, EisenhowerQuadrant } from '../../types';
+import { 
+  formatDateIndo, 
+  formatMinutes, 
+  TASK_STATUS_LABELS, 
+  PRIORITY_LABELS,
+  EISENHOWER_LABELS 
+} from '../../utils/formatters';
+
+interface TasksViewProps {
+  onOpenTaskModal: (task?: Task) => void;
+  selectedTaskId?: string | null;
+}
+
+export const TasksView: React.FC<TasksViewProps> = ({
+  onOpenTaskModal,
+  selectedTaskId
+}) => {
+  const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'eisenhower'>('kanban');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterProject, setFilterProject] = useState<string>('all');
+  const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [quickTitle, setQuickTitle] = useState('');
+
+  const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
+  const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
+
+  // Filter tasks
+  const filteredTasks = tasks.filter(t => {
+    if (filterProject !== 'all' && t.projectId !== filterProject) return false;
+    if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = t.title.toLowerCase().includes(q);
+      const matchTags = t.tags?.some(tag => tag.toLowerCase().includes(q));
+      if (!matchTitle && !matchTags) return false;
+    }
+    return true;
+  });
+
+  const handleToggleTask = async (task: Task) => {
+    const nextCompleted = !task.isCompleted;
+    const nowIso = new Date().toISOString();
+    await db.tasks.update(task.id, {
+      isCompleted: nextCompleted,
+      status: nextCompleted ? 'done' : 'todo',
+      completedAt: nextCompleted ? nowIso : undefined,
+      updatedAt: nowIso
+    });
+
+    if (nextCompleted) {
+      confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+    }
+  };
+
+  const handleMoveStatus = async (task: Task, nextStatus: TaskStatus) => {
+    const nowIso = new Date().toISOString();
+    const isDone = nextStatus === 'done';
+    await db.tasks.update(task.id, {
+      status: nextStatus,
+      isCompleted: isDone,
+      completedAt: isDone ? nowIso : undefined,
+      updatedAt: nowIso
+    });
+    if (isDone) {
+      confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+    }
+  };
+
+  const handleDeleteTask = async (id: string, title: string) => {
+    if (window.confirm(`Hapus tugas "${title}"?`)) {
+      await db.tasks.delete(id);
+    }
+  };
+
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickTitle.trim()) return;
+
+    const nowIso = new Date().toISOString();
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      title: quickTitle.trim(),
+      projectId: filterProject !== 'all' ? filterProject : undefined,
+      status: 'todo',
+      priority: 'medium',
+      eisenhower: 'do_first',
+      dueDate: '2026-10-16',
+      isCompleted: false,
+      tags: [],
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+
+    await db.tasks.put(newTask);
+    setQuickTitle('');
+  };
+
+  const columns: { id: TaskStatus; title: string; color: string }[] = [
+    { id: 'todo', title: 'Untuk Dikerjakan', color: 'border-t-zinc-600' },
+    { id: 'in_progress', title: 'Sedang Berjalan', color: 'border-t-blue-500' },
+    { id: 'in_review', title: 'Dalam Tinjauan', color: 'border-t-amber-500' },
+    { id: 'done', title: 'Selesai', color: 'border-t-emerald-500' },
+  ];
+
+  const quadrants: EisenhowerQuadrant[] = ['do_first', 'schedule', 'delegate', 'dont_do'];
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            Daftar Tugas & Eksekusi Operasional
+          </h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Papan Kanban, tampilan tabel terstruktur, dan Matrix Eisenhower untuk eksekusi bisnis Mahada Indonesia.
+          </p>
+        </div>
+
+        <button
+          onClick={() => onOpenTaskModal()}
+          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-xs self-start sm:self-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Tambah Tugas Baru</span>
+        </button>
+      </div>
+
+      {/* Quick Add Bar */}
+      <form 
+        onSubmit={handleQuickAdd}
+        className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900/90 border border-zinc-800 shadow-xs"
+      >
+        <Plus className="w-4 h-4 text-zinc-500 ml-2 shrink-0" />
+        <input
+          type="text"
+          placeholder="Tambah tugas baru dengan cepat (tekan Enter)..."
+          value={quickTitle}
+          onChange={(e) => setQuickTitle(e.target.value)}
+          className="w-full text-xs bg-transparent outline-none text-zinc-100 placeholder:text-zinc-500"
+        />
+        <button
+          type="submit"
+          disabled={!quickTitle.trim()}
+          className="px-3.5 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-lg transition shrink-0 shadow-xs"
+        >
+          Simpan
+        </button>
+      </form>
+
+      {/* Filter and View Modes Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800">
+        {/* Left: Search & Dropdowns */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-700 text-xs w-48 bg-zinc-950">
+            <Search className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+            <input
+              type="text"
+              placeholder="Cari tugas atau tag..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent outline-none text-zinc-100 placeholder:text-zinc-500 text-xs"
+            />
+          </div>
+
+          <select
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-200"
+          >
+            <option value="all">Semua Proyek</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-200"
+          >
+            <option value="all">Semua Prioritas</option>
+            <option value="urgent">Mendesak</option>
+            <option value="high">Tinggi</option>
+            <option value="medium">Sedang</option>
+            <option value="low">Rendah</option>
+          </select>
+        </div>
+
+        {/* Right: View Mode Toggle */}
+        <div className="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg self-end lg:self-auto border border-zinc-800">
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition ${
+              viewMode === 'kanban' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Kanban className="w-3.5 h-3.5" />
+            <span>Kanban</span>
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition ${
+              viewMode === 'table' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <TableIcon className="w-3.5 h-3.5" />
+            <span>Tabel</span>
+          </button>
+          <button
+            onClick={() => setViewMode('eisenhower')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition ${
+              viewMode === 'eisenhower' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Grid2X2 className="w-3.5 h-3.5" />
+            <span>Eisenhower Matrix</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Tasks Views */}
+      {viewMode === 'kanban' ? (
+        /* Kanban Board View */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          {columns.map((col) => {
+            const colTasks = filteredTasks.filter(t => t.status === col.id);
+
+            return (
+              <div 
+                key={col.id}
+                className={`rounded-2xl bg-zinc-950/70 border border-zinc-800/80 p-3.5 border-t-4 ${col.color}`}
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-zinc-200">
+                      {col.title}
+                    </span>
+                    <span className="text-[11px] font-semibold tabular-nums text-zinc-400 bg-zinc-900 border border-zinc-700 px-1.5 py-0.2 rounded-md">
+                      {colTasks.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onOpenTaskModal()}
+                    className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                    title="Tambah tugas ke kolom ini"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Column Cards */}
+                <div className="space-y-2.5 min-h-[120px]">
+                  {colTasks.length === 0 ? (
+                    <div className="py-6 text-center text-[11px] text-zinc-500 italic">
+                      Tidak ada tugas
+                    </div>
+                  ) : (
+                    colTasks.map((task) => {
+                      const proj = projects.find(p => p.id === task.projectId);
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition text-left group shadow-xs"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <button
+                              onClick={() => handleToggleTask(task)}
+                              className="mt-0.5 text-zinc-500 hover:text-emerald-400 transition shrink-0"
+                            >
+                              {task.isCompleted ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              ) : (
+                                <Circle className="w-4 h-4" />
+                              )}
+                            </button>
+
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-xs font-medium text-zinc-100 ${task.isCompleted ? 'line-through text-zinc-500' : ''}`}>
+                                {task.title}
+                              </p>
+
+                              {proj && (
+                                <p className="text-[10px] text-zinc-400 font-medium truncate mt-1">
+                                  {proj.title}
+                                </p>
+                              )}
+
+                              <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-400 pt-2 border-t border-zinc-800">
+                                <span className={PRIORITY_LABELS[task.priority]?.textClass}>
+                                  {PRIORITY_LABELS[task.priority]?.label}
+                                </span>
+                                {task.dueDate && (
+                                  <span>{formatDateIndo(task.dueDate)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Move Status / Actions */}
+                          <div className="mt-2.5 pt-2 border-t border-zinc-800 flex items-center justify-between opacity-80 group-hover:opacity-100 transition">
+                            <select
+                              value={task.status}
+                              onChange={(e) => handleMoveStatus(task, e.target.value as TaskStatus)}
+                              className="text-[10px] bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300"
+                            >
+                              <option value="todo">Untuk Dikerjakan</option>
+                              <option value="in_progress">Sedang Berjalan</option>
+                              <option value="in_review">Tinjauan</option>
+                              <option value="done">Selesai</option>
+                            </select>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => onOpenTaskModal(task)}
+                                className="p-1 text-zinc-400 hover:text-white rounded"
+                                title="Ubah"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id, task.title)}
+                                className="p-1 text-zinc-400 hover:text-rose-400 rounded"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : viewMode === 'table' ? (
+        /* Linear-style Dense Dark Table */
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-950/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-3 px-4 w-10 text-center">Status</th>
+                  <th className="py-3 px-4">Nama Tugas</th>
+                  <th className="py-3 px-4">Proyek</th>
+                  <th className="py-3 px-4">Prioritas</th>
+                  <th className="py-3 px-4">Tenggat</th>
+                  <th className="py-3 px-4">Estimasi</th>
+                  <th className="py-3 px-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 text-xs">
+                {filteredTasks.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-zinc-500 italic">
+                      Tidak ada tugas yang cocok dengan kriteria pencarian.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTasks.map((task) => {
+                    const proj = projects.find(p => p.id === task.projectId);
+
+                    return (
+                      <tr key={task.id} className="hover:bg-zinc-800/40 transition group">
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => handleToggleTask(task)}
+                            className="text-zinc-500 hover:text-emerald-400 transition"
+                          >
+                            {task.isCompleted ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <Circle className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 font-medium text-zinc-100 max-w-sm truncate">
+                          <span className={task.isCompleted ? 'line-through text-zinc-500' : ''}>
+                            {task.title}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-zinc-400 max-w-[160px] truncate">
+                          {proj ? proj.title : '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={PRIORITY_LABELS[task.priority]?.textClass}>
+                            {PRIORITY_LABELS[task.priority]?.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-zinc-400 whitespace-nowrap">
+                          {formatDateIndo(task.dueDate)}
+                        </td>
+                        <td className="py-3 px-4 tabular-nums text-zinc-400">
+                          {formatMinutes(task.estimatedMinutes)}
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => onOpenTaskModal(task)}
+                            className="p-1 text-zinc-400 hover:text-white rounded mr-1"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTask(task.id, task.title)}
+                            className="p-1 text-zinc-400 hover:text-rose-400 rounded"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Eisenhower Matrix 4 Quadrants */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {quadrants.map((quad) => {
+            const quadInfo = EISENHOWER_LABELS[quad];
+            const quadTasks = filteredTasks.filter(t => (t.eisenhower || 'do_first') === quad);
+
+            return (
+              <div 
+                key={quad}
+                className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col justify-between shadow-xs"
+              >
+                <div>
+                  <div className="pb-3 border-b border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold" style={{ color: quadInfo.color }}>
+                        {quadInfo.label}
+                      </h3>
+                      <p className="text-[11px] text-zinc-400">
+                        {quadInfo.desc}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold tabular-nums text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-700">
+                      {quadTasks.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 divide-y divide-zinc-800/60 space-y-1">
+                    {quadTasks.length === 0 ? (
+                      <p className="text-xs text-zinc-500 italic py-4 text-center">
+                        Tidak ada tugas di kuadran ini.
+                      </p>
+                    ) : (
+                      quadTasks.map((task) => (
+                        <div key={task.id} className="py-2.5 flex items-start justify-between gap-2 group">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <button
+                              onClick={() => handleToggleTask(task)}
+                              className="mt-0.5 text-zinc-500 hover:text-emerald-400 transition shrink-0"
+                            >
+                              {task.isCompleted ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              ) : (
+                                <Circle className="w-4 h-4" />
+                              )}
+                            </button>
+                            <div className="min-w-0">
+                              <p className={`text-xs font-medium ${task.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>
+                                {task.title}
+                              </p>
+                              {task.dueDate && (
+                                <span className="text-[10px] text-zinc-400">
+                                  Tenggat: {formatDateIndo(task.dueDate)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => onOpenTaskModal(task)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-white"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
