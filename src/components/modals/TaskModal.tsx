@@ -22,13 +22,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 }) => {
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
 
+  const todayIso = new Date().toISOString().split('T')[0];
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [eisenhower, setEisenhower] = useState<EisenhowerQuadrant>('do_first');
-  const [dueDate, setDueDate] = useState(defaultDate || '2026-10-16');
+  const [dueDate, setDueDate] = useState(defaultDate || todayIso);
   const [estimatedMinutes, setEstimatedMinutes] = useState(60);
   const [tagsInput, setTagsInput] = useState('');
   
@@ -47,7 +49,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setStatus(taskToEdit.status);
       setPriority(taskToEdit.priority);
       setEisenhower(taskToEdit.eisenhower || 'do_first');
-      setDueDate(taskToEdit.dueDate || '2026-10-16');
+      setDueDate(taskToEdit.dueDate || todayIso);
       setEstimatedMinutes(taskToEdit.estimatedMinutes || 60);
       setTagsInput(taskToEdit.tags?.join(', ') || '');
       if (taskToEdit.scheduledStartTime && taskToEdit.scheduledEndTime) {
@@ -61,18 +63,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle('');
       setDescription('');
       setProjectId(defaultProjectId || '');
-      setGoalId('');
       setStatus('todo');
       setPriority('medium');
       setEisenhower('do_first');
-      setDueDate(defaultDate || '2026-10-16');
+      setDueDate(defaultDate || todayIso);
       setEstimatedMinutes(60);
       setTagsInput('');
       setScheduleOnCalendar(false);
       setStartTime('09:00');
       setEndTime('10:00');
     }
-  }, [taskToEdit, defaultProjectId, defaultDate, isOpen]);
+  }, [taskToEdit, defaultProjectId, defaultDate, isOpen, todayIso]);
 
   const handleProjectChange = (selectedProjId: string) => {
     setProjectId(selectedProjId);
