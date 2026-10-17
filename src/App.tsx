@@ -215,7 +215,7 @@ export default function App() {
           )}
 
           {activeTab === 'analytics' && (
-            <AnalyticsView />
+            <AnalyticsView onNavigate={handleNavigate} />
           )}
 
           {activeTab === 'settings' && (
