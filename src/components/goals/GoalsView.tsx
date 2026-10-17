@@ -20,7 +20,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { db } from '../../db';
-import type { Goal, GoalCategory, GoalStatus, GoalPriority, Project, ActiveTab } from '../../types';
+import { DEFAULT_GOAL_CATEGORIES, type Goal, type GoalCategory, type GoalStatus, type GoalPriority, Project, ActiveTab } from '../../types';
 import { formatDateIndo, GOAL_STATUS_LABELS, PRIORITY_LABELS } from '../../utils/formatters';
 
 interface GoalsViewProps {
@@ -50,10 +50,15 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
   const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
+  const settings = useLiveQuery(() => db.settings.get('user_default'));
 
   // Filter logic
   const filteredGoals = goals.filter(g => {
-    if (selectedCategory !== 'all' && g.category !== selectedCategory) return false;
+    if (selectedCategory !== 'all') {
+      const matchExact = g.category === selectedCategory;
+      const matchPrefix = g.category.startsWith(selectedCategory.split(' ')[0]) || selectedCategory.startsWith(g.category.split(' ')[0]);
+      if (!matchExact && !matchPrefix) return false;
+    }
     if (selectedStatus !== 'all' && g.status !== selectedStatus) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -114,7 +119,9 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
     setConfirmDeleteId(null);
   };
 
-  const categories: GoalCategory[] = ['Pendapatan', 'Pemasaran', 'Produk', 'Operasional', 'Klien', 'Personal'];
+  const categories: string[] = settings?.goalCategories && settings.goalCategories.length > 0
+    ? settings.goalCategories
+    : DEFAULT_GOAL_CATEGORIES;
 
   return (
     <div className="space-y-6">
@@ -182,7 +189,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
               Semua ({goals.length})
             </button>
             {categories.map(cat => {
-              const count = goals.filter(g => g.category === cat).length;
+              const count = goals.filter(g => g.category === cat || g.category.startsWith(cat.split(' ')[0]) || cat.startsWith(g.category.split(' ')[0])).length;
               return (
                 <button
                   key={cat}

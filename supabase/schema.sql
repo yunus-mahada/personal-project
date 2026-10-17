@@ -12,8 +12,12 @@ CREATE TABLE IF NOT EXISTS public.settings (
     default_weekly_goal_hours INTEGER NOT NULL DEFAULT 40,
     theme TEXT NOT NULL DEFAULT 'dark',
     has_completed_onboarding BOOLEAN NOT NULL DEFAULT true,
+    goal_categories JSONB DEFAULT '["Pendapatan (Revenue)", "Pemasaran (Marketing)", "Produk (Product)", "Operasional (Operations)", "Klien (Client & Sales)", "Personal & Kepemimpinan"]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migrasi aman untuk menambahkan kolom goal_categories jika tabel sudah ada:
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS goal_categories JSONB DEFAULT '["Pendapatan (Revenue)", "Pemasaran (Marketing)", "Produk (Product)", "Operasional (Operations)", "Klien (Client & Sales)", "Personal & Kepemimpinan"]'::jsonb;
 
 -- 2. Tabel Goals (Sasaran / Target Bisnis Utama)
 CREATE TABLE IF NOT EXISTS public.goals (

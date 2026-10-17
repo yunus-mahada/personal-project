@@ -1,20 +1,20 @@
 export type DefaultGoalCategory = 
-  | 'Pendapatan' 
-  | 'Pemasaran' 
-  | 'Produk' 
-  | 'Operasional' 
-  | 'Klien' 
-  | 'Personal';
+  | 'Pendapatan (Revenue)' 
+  | 'Pemasaran (Marketing)' 
+  | 'Produk (Product)' 
+  | 'Operasional (Operations)' 
+  | 'Klien (Client & Sales)' 
+  | 'Personal & Kepemimpinan';
 
-export type GoalCategory = DefaultGoalCategory | string;
+export type GoalCategory = string;
 
 export const DEFAULT_GOAL_CATEGORIES: string[] = [
-  'Pendapatan', 
-  'Pemasaran', 
-  'Produk', 
-  'Operasional', 
-  'Klien', 
-  'Personal'
+  'Pendapatan (Revenue)', 
+  'Pemasaran (Marketing)', 
+  'Produk (Product)', 
+  'Operasional (Operations)', 
+  'Klien (Client & Sales)', 
+  'Personal & Kepemimpinan'
 ];
 
 export type GoalStatus = 'on_track' | 'at_risk' | 'behind' | 'completed';

@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { db } from '../db';
-import type { 
+import { 
   Goal, 
   Project, 
   Task, 
   CalendarEvent, 
   Note, 
   Routine, 
-  UserSettings 
+  UserSettings,
+  DEFAULT_GOAL_CATEGORIES
 } from '../types';
 
 // Ambil kredensial dari environment variable Vite (VITE_*)
@@ -91,6 +92,7 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
         default_weekly_goal_hours: s.defaultWeeklyGoalHours,
         theme: s.theme,
         has_completed_onboarding: s.hasCompletedOnboarding,
+        goal_categories: s.goalCategories || DEFAULT_GOAL_CATEGORIES,
         updated_at: new Date().toISOString()
       }));
       const { error } = await supabase.from('settings').upsert(dbSettings);
@@ -279,7 +281,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
           currency: s.currency,
           defaultWeeklyGoalHours: s.default_weekly_goal_hours,
           theme: s.theme,
-          hasCompletedOnboarding: s.has_completed_onboarding
+          hasCompletedOnboarding: s.has_completed_onboarding,
+          goalCategories: Array.isArray(s.goal_categories) && s.goal_categories.length > 0 
+            ? s.goal_categories 
+            : DEFAULT_GOAL_CATEGORIES
         });
       }
     }

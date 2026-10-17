@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import type { Goal, GoalCategory, GoalStatus, GoalPriority } from '../../types';
+import { DEFAULT_GOAL_CATEGORIES, type Goal, type GoalCategory, type GoalStatus, type GoalPriority } from '../../types';
 
 interface GoalModalProps {
   isOpen: boolean;
@@ -14,9 +15,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   onClose,
   goalToEdit
 }) => {
+  const settings = useLiveQuery(() => db.settings.get('user_default'));
+  const availableCategories = settings?.goalCategories && settings.goalCategories.length > 0
+    ? settings.goalCategories
+    : DEFAULT_GOAL_CATEGORIES;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<GoalCategory>('Pendapatan');
+  const [category, setCategory] = useState<GoalCategory>('Pendapatan (Revenue)');
   const [targetValue, setTargetValue] = useState(100);
   const [currentValue, setCurrentValue] = useState(0);
   const [unit, setUnit] = useState('Juta Rp');
@@ -40,7 +46,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
     } else {
       setTitle('');
       setDescription('');
-      setCategory('Pendapatan');
+      setCategory(availableCategories[0] || 'Pendapatan (Revenue)');
       setTargetValue(100);
       setCurrentValue(0);
       setUnit('Juta Rp');
@@ -49,7 +55,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       setPriority('high');
       setColor('#3b82f6');
     }
-  }, [goalToEdit, isOpen]);
+  }, [goalToEdit, isOpen, availableCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,15 +139,17 @@ export const GoalModal: React.FC<GoalModalProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as GoalCategory)}
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
               >
-                <option value="Pendapatan">Pendapatan (Revenue)</option>
-                <option value="Pemasaran">Pemasaran (Marketing)</option>
-                <option value="Produk">Produk (Product)</option>
-                <option value="Operasional">Operasional (Operations)</option>
-                <option value="Klien">Klien (Client & Sales)</option>
-                <option value="Personal">Personal & Kepemimpinan</option>
+                {!availableCategories.includes(category) && (
+                  <option value={category}>{category}</option>
+                )}
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 

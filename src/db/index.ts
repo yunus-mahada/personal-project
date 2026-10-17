@@ -1,12 +1,13 @@
 import Dexie, { type Table } from 'dexie';
-import type { 
-  Goal, 
-  Project, 
-  Task, 
-  CalendarEvent, 
-  Note, 
-  Routine, 
-  UserSettings 
+import { 
+  type Goal, 
+  type Project, 
+  type Task, 
+  type CalendarEvent, 
+  type Note, 
+  type Routine, 
+  type UserSettings,
+  DEFAULT_GOAL_CATEGORIES
 } from '../types';
 
 export class MahadaDatabase extends Dexie {
@@ -40,10 +41,17 @@ export async function initializeDatabase() {
     await seedInitialData();
   } else {
     const existing = await db.settings.get('user_default');
-    if (existing && (!existing.businessName || existing.businessName.includes('Nexora'))) {
-      await db.settings.update('user_default', {
-        businessName: 'Mahada Indonesia'
-      });
+    if (existing) {
+      const updates: Partial<UserSettings> = {};
+      if (!existing.businessName || existing.businessName.includes('Nexora')) {
+        updates.businessName = 'Mahada Indonesia';
+      }
+      if (!existing.goalCategories || existing.goalCategories.length === 0) {
+        updates.goalCategories = DEFAULT_GOAL_CATEGORIES;
+      }
+      if (Object.keys(updates).length > 0) {
+        await db.settings.update('user_default', updates);
+      }
     }
   }
 }
@@ -60,7 +68,8 @@ export async function seedInitialData() {
     currency: 'IDR',
     defaultWeeklyGoalHours: 40,
     theme: 'dark',
-    hasCompletedOnboarding: true
+    hasCompletedOnboarding: true,
+    goalCategories: DEFAULT_GOAL_CATEGORIES
   };
   await db.settings.put(defaultSettings);
 
