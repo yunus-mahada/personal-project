@@ -39,6 +39,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [endTime, setEndTime] = useState('10:00');
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (taskToEdit) {
       setTitle(taskToEdit.title);
       setDescription(taskToEdit.description || '');

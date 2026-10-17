@@ -30,6 +30,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [tagsInput, setTagsInput] = useState('');
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (projectToEdit) {
       setTitle(projectToEdit.title);
       setDescription(projectToEdit.description);

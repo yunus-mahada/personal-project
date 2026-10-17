@@ -251,16 +251,45 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
       {filteredGoals.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-[#181b20] border border-[#262b34]">
           <Target className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-          <h3 className="text-sm font-semibold text-white">Belum Ada Sasaran Sesuai Filter</h3>
-          <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-            Mulai susun roadmap bisnis Personal Project dengan membuat sasaran strategis baru.
-          </p>
-          <button
-            onClick={() => onOpenGoalModal()}
-            className="mt-4 px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition cursor-pointer"
-          >
-            + Buat Sasaran Sekarang
-          </button>
+          {goals.length > 0 ? (
+            <>
+              <h3 className="text-sm font-semibold text-white">Tidak Ada Sasaran yang Cocok dengan Filter</h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                Anda memiliki {goals.length} sasaran tersimpan, namun tersembunyi karena filter kategori "{selectedCategory}" atau pencarian aktif.
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSelectedStatus('all');
+                    setSearchQuery('');
+                  }}
+                  className="px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition cursor-pointer"
+                >
+                  Tampilkan Semua Sasaran ({goals.length})
+                </button>
+                <button
+                  onClick={() => onOpenGoalModal()}
+                  className="px-3.5 py-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800 rounded-lg transition cursor-pointer"
+                >
+                  + Tambah Sasaran Baru
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-white">Belum Ada Sasaran Bisnis</h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                Mulai susun roadmap bisnis Personal Project dengan membuat sasaran strategis baru.
+              </p>
+              <button
+                onClick={() => onOpenGoalModal()}
+                className="mt-4 px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition cursor-pointer"
+              >
+                + Buat Sasaran Sekarang
+              </button>
+            </>
+          )}
         </div>
       ) : viewMode === 'table' ? (
         /* Interactive Table for Quick & Seamless Updating */

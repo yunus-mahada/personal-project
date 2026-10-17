@@ -32,6 +32,8 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   const [color, setColor] = useState('#3b82f6');
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (goalToEdit) {
       setTitle(goalToEdit.title);
       setDescription(goalToEdit.description);
@@ -55,7 +57,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       setPriority('high');
       setColor('#3b82f6');
     }
-  }, [goalToEdit, isOpen, availableCategories]);
+  }, [goalToEdit, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

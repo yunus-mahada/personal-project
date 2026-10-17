@@ -73,29 +73,36 @@ export const SettingsView: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const isProfileLoadedRef = useRef(false);
 
   React.useEffect(() => {
-    if (settings) {
+    if (settings && !isProfileLoadedRef.current) {
       setUserName(settings.userName || 'Yunus Mahada');
       setBusinessName(settings.businessName || 'Personal Project');
       setCurrency(settings.currency || 'IDR');
       setDefaultWeeklyHours(settings.defaultWeeklyGoalHours || 40);
+      isProfileLoadedRef.current = true;
     }
   }, [settings]);
 
   // Save Profile
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    await db.settings.put({
+    const existing = await db.settings.get('user_default');
+    const updatedSettings: any = {
+      ...(existing || {}),
       id: 'user_default',
-      userName,
-      businessName,
+      userName: userName.trim() || 'Yunus Mahada',
+      businessName: businessName.trim() || 'Personal Project',
       currency,
       defaultWeeklyGoalHours: Number(defaultWeeklyHours) || 40,
       theme: 'dark',
       hasCompletedOnboarding: true,
-      goalCategories: categories
-    });
+      goalCategories: existing?.goalCategories && existing.goalCategories.length > 0 
+        ? existing.goalCategories 
+        : categories
+    };
+    await db.settings.put(updatedSettings);
     setSaveStatus('Pengaturan profil berhasil disimpan!');
     setTimeout(() => setSaveStatus(null), 3000);
   };
@@ -112,7 +119,16 @@ export const SettingsView: React.FC = () => {
     }
 
     const updated = [...categories, trimmed];
-    await db.settings.update('user_default', {
+    const existing = await db.settings.get('user_default');
+    await db.settings.put({
+      ...(existing || {}),
+      id: 'user_default',
+      userName: existing?.userName || userName || 'Yunus Mahada',
+      businessName: existing?.businessName || businessName || 'Personal Project',
+      currency: existing?.currency || currency || 'IDR',
+      defaultWeeklyGoalHours: existing?.defaultWeeklyGoalHours || Number(defaultWeeklyHours) || 40,
+      theme: 'dark',
+      hasCompletedOnboarding: true,
       goalCategories: updated
     });
     setNewCategoryName('');
@@ -128,7 +144,16 @@ export const SettingsView: React.FC = () => {
     }
 
     const updated = categories.filter(c => c !== cat);
-    await db.settings.update('user_default', {
+    const existing = await db.settings.get('user_default');
+    await db.settings.put({
+      ...(existing || {}),
+      id: 'user_default',
+      userName: existing?.userName || userName || 'Yunus Mahada',
+      businessName: existing?.businessName || businessName || 'Personal Project',
+      currency: existing?.currency || currency || 'IDR',
+      defaultWeeklyGoalHours: existing?.defaultWeeklyGoalHours || Number(defaultWeeklyHours) || 40,
+      theme: 'dark',
+      hasCompletedOnboarding: true,
       goalCategories: updated
     });
     setCategoryToDelete(null);
