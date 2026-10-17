@@ -22,6 +22,7 @@ import {
   PRIORITY_LABELS,
   EISENHOWER_LABELS 
 } from '../../utils/formatters';
+import { cloudUpsertTask, cloudDeleteTask } from '../../lib/supabase';
 
 interface TasksViewProps {
   onOpenTaskModal: (task?: Task) => void;
@@ -57,12 +58,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleToggleTask = async (task: Task) => {
     const nextCompleted = !task.isCompleted;
     const nowIso = new Date().toISOString();
-    await db.tasks.update(task.id, {
+    const updatedTask: Task = {
+      ...task,
       isCompleted: nextCompleted,
       status: nextCompleted ? 'done' : 'todo',
       completedAt: nextCompleted ? nowIso : undefined,
       updatedAt: nowIso
-    });
+    };
+    await db.tasks.put(updatedTask);
+    cloudUpsertTask(updatedTask).catch(console.error);
 
     if (nextCompleted) {
       confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
@@ -72,12 +76,16 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleMoveStatus = async (task: Task, nextStatus: TaskStatus) => {
     const nowIso = new Date().toISOString();
     const isDone = nextStatus === 'done';
-    await db.tasks.update(task.id, {
+    const updatedTask: Task = {
+      ...task,
       status: nextStatus,
       isCompleted: isDone,
       completedAt: isDone ? nowIso : undefined,
       updatedAt: nowIso
-    });
+    };
+    await db.tasks.put(updatedTask);
+    cloudUpsertTask(updatedTask).catch(console.error);
+
     if (isDone) {
       confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
     }
@@ -86,6 +94,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleDeleteTask = async (id: string, title: string) => {
     if (window.confirm(`Hapus tugas "${title}"?`)) {
       await db.tasks.delete(id);
+      cloudDeleteTask(id).catch(console.error);
     }
   };
 
@@ -109,6 +118,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     };
 
     await db.tasks.put(newTask);
+    cloudUpsertTask(newTask).catch(console.error);
     setQuickTitle('');
   };
 

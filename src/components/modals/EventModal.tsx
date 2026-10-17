@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { db } from '../../db';
 import type { CalendarEvent, CalendarEventCategory } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { cloudUpsertCalendarEvent } from '../../lib/supabase';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -81,6 +82,7 @@ export const EventModal: React.FC<EventModalProps> = ({
     };
 
     await db.calendarEvents.put(eventData);
+    cloudUpsertCalendarEvent(eventData).catch(console.error);
     onClose();
   };
 

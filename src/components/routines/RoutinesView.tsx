@@ -15,6 +15,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { db } from '../../db';
 import type { Routine, RoutineTimeOfDay } from '../../types';
+import { cloudUpsertRoutine, cloudDeleteRoutine } from '../../lib/supabase';
 
 interface RoutinesViewProps {
   onOpenRoutineModal: (routine?: Routine) => void;
@@ -49,15 +50,20 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
       confetti({ particleCount: 25, spread: 45, origin: { y: 0.7 } });
     }
 
-    await db.routines.update(routine.id, {
+    const updatedRoutine: Routine = {
+      ...routine,
       completedDates: nextDates,
       streak: nextStreak
-    });
+    };
+
+    await db.routines.put(updatedRoutine);
+    cloudUpsertRoutine(updatedRoutine).catch(console.error);
   };
 
   const handleDeleteRoutine = async (id: string, title: string) => {
     if (window.confirm(`Hapus rutinitas "${title}"?`)) {
       await db.routines.delete(id);
+      cloudDeleteRoutine(id).catch(console.error);
     }
   };
 

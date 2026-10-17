@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
+import { cloudUpsertGoal } from '../../lib/supabase';
 import { DEFAULT_GOAL_CATEGORIES, type Goal, type GoalCategory, type GoalStatus, type GoalPriority } from '../../types';
 
 interface GoalModalProps {
@@ -81,6 +82,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
     };
 
     await db.goals.put(goalData);
+    cloudUpsertGoal(goalData);
     onClose();
   };
 

@@ -64,16 +64,12 @@ export async function initializeDatabase() {
     }
   }
 
-  // Otomatis bersihkan sisa data dummy bawaan dari IndexedDB browser yang tersimpan sebelumnya
+  // Pastikan data dummy sisa dibersihkan jika masih ada
   try {
-    const CLEANUP_KEY = 'mahada_dummy_purged_v1';
-    if (!localStorage.getItem(CLEANUP_KEY)) {
-      const hasDummyGoal = await db.goals.get('goal-1');
-      const hasDummyProject = await db.projects.get('proj-1');
-      if (hasDummyGoal || hasDummyProject) {
-        await clearAllBusinessData();
-      }
-      localStorage.setItem(CLEANUP_KEY, 'true');
+    const hasDummyGoal = await db.goals.get('goal-1');
+    const hasDummyProject = await db.projects.get('proj-1');
+    if (hasDummyGoal || hasDummyProject) {
+      await clearAllBusinessData();
     }
   } catch (err) {
     console.error('Auto-purge error:', err);

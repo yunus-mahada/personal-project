@@ -20,6 +20,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { db } from '../../db';
+import { cloudUpsertGoal, cloudDeleteGoal } from '../../lib/supabase';
 import { DEFAULT_GOAL_CATEGORIES, type Goal, type GoalCategory, type GoalStatus, type GoalPriority, Project, ActiveTab } from '../../types';
 import { formatDateIndo, GOAL_STATUS_LABELS, PRIORITY_LABELS } from '../../utils/formatters';
 
@@ -77,6 +78,8 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
       status: nextStatus,
       updatedAt: nowIso
     });
+    const g = await db.goals.get(goalId);
+    if (g) cloudUpsertGoal(g);
     if (nextStatus === 'completed') {
       confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
     }
@@ -84,10 +87,13 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
 
   // Quick update priority directly from table
   const handleQuickPriorityChange = async (goalId: string, nextPriority: GoalPriority) => {
+    const nowIso = new Date().toISOString();
     await db.goals.update(goalId, {
       priority: nextPriority,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     });
+    const g = await db.goals.get(goalId);
+    if (g) cloudUpsertGoal(g);
   };
 
   // Start inline value editing
@@ -101,11 +107,14 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
     const num = parseFloat(tempValue);
     if (!isNaN(num) && num >= 0) {
       const isNowCompleted = num >= goal.targetValue;
+      const nowIso = new Date().toISOString();
       await db.goals.update(goal.id, {
         currentValue: num,
         status: isNowCompleted ? 'completed' : goal.status === 'completed' ? 'on_track' : goal.status,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       });
+      const g = await db.goals.get(goal.id);
+      if (g) cloudUpsertGoal(g);
       if (isNowCompleted && goal.status !== 'completed') {
         confetti({ particleCount: 40, spread: 70, origin: { y: 0.7 } });
       }
@@ -116,6 +125,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
   // Handle inline deletion without window.confirm
   const handleExecuteDelete = async (id: string) => {
     await db.goals.delete(id);
+    cloudDeleteGoal(id);
     setConfirmDeleteId(null);
   };
 

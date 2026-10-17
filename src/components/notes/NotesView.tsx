@@ -14,6 +14,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import type { Note, NoteCategory } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { cloudUpsertNote, cloudDeleteNote } from '../../lib/supabase';
 
 interface NotesViewProps {
   onOpenNoteModal: (note?: Note) => void;
@@ -47,14 +48,19 @@ export const NotesView: React.FC<NotesViewProps> = ({
   const regularNotes = filteredNotes.filter(n => !n.isPinned);
 
   const handleTogglePin = async (note: Note) => {
-    await db.notes.update(note.id, {
-      isPinned: !note.isPinned
-    });
+    const updatedNote: Note = {
+      ...note,
+      isPinned: !note.isPinned,
+      updatedAt: new Date().toISOString()
+    };
+    await db.notes.put(updatedNote);
+    cloudUpsertNote(updatedNote).catch(console.error);
   };
 
   const handleDeleteNote = async (id: string, title: string) => {
     if (window.confirm(`Hapus catatan "${title}"?`)) {
       await db.notes.delete(id);
+      cloudDeleteNote(id).catch(console.error);
     }
   };
 

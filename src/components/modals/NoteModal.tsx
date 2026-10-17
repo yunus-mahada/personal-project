@@ -3,6 +3,7 @@ import { X, Pin } from 'lucide-react';
 import { db } from '../../db';
 import type { Note, NoteCategory } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { cloudUpsertNote } from '../../lib/supabase';
 
 interface NoteModalProps {
   isOpen: boolean;
@@ -67,6 +68,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
     };
 
     await db.notes.put(noteData);
+    cloudUpsertNote(noteData).catch(console.error);
     onClose();
   };
 

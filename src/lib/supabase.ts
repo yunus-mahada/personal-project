@@ -225,6 +225,21 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Routines sync error: ${error.message}`);
     }
 
+    // 8. Business Categories Table
+    const activeCategories = (settings[0]?.goalCategories && settings[0].goalCategories.length > 0)
+      ? settings[0].goalCategories
+      : DEFAULT_GOAL_CATEGORIES;
+    
+    if (activeCategories.length > 0) {
+      const dbCategories = activeCategories.map((cat, idx) => ({
+        id: `cat-${idx + 1}`,
+        name: cat,
+        color: '#3b82f6'
+      }));
+      const { error } = await supabase.from('business_categories').upsert(dbCategories, { onConflict: 'name' });
+      if (error) console.warn('Business categories sync note:', error.message);
+    }
+
     return {
       success: true,
       message: 'Berhasil mengunggah semua data ke Supabase Cloud!',
@@ -235,6 +250,7 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
         calendarEvents: calendarEvents.length,
         notes: notes.length,
         routines: routines.length,
+        categories: activeCategories.length
       }
     };
   } catch (err: any) {
@@ -261,7 +277,8 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       { data: tasks },
       { data: events },
       { data: notes },
-      { data: routines }
+      { data: routines },
+      { data: categories }
     ] = await Promise.all([
       supabase.from('settings').select('*'),
       supabase.from('goals').select('*'),
@@ -270,7 +287,16 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       supabase.from('calendar_events').select('*'),
       supabase.from('notes').select('*'),
       supabase.from('routines').select('*'),
+      supabase.from('business_categories').select('*'),
     ]);
+
+    // Categories priority from dedicated table if available
+    let resolvedCategories = DEFAULT_GOAL_CATEGORIES;
+    if (categories && categories.length > 0) {
+      resolvedCategories = categories.map(c => c.name);
+    } else if (settings && settings.length > 0 && Array.isArray(settings[0].goal_categories) && settings[0].goal_categories.length > 0) {
+      resolvedCategories = settings[0].goal_categories;
+    }
 
     if (settings && settings.length > 0) {
       for (const s of settings) {
@@ -282,10 +308,13 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
           defaultWeeklyGoalHours: s.default_weekly_goal_hours,
           theme: s.theme,
           hasCompletedOnboarding: s.has_completed_onboarding,
-          goalCategories: Array.isArray(s.goal_categories) && s.goal_categories.length > 0 
-            ? s.goal_categories 
-            : DEFAULT_GOAL_CATEGORIES
+          goalCategories: resolvedCategories
         });
+      }
+    } else if (categories && categories.length > 0) {
+      const existingSettings = await db.settings.get('user_default');
+      if (existingSettings) {
+        await db.settings.update('user_default', { goalCategories: resolvedCategories });
       }
     }
 
@@ -418,5 +447,244 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       success: false,
       message: `Gagal mengunduh data dari Supabase: ${err.message}`
     };
+  }
+}
+
+// ==============================================================================
+// REAL-TIME AUTO-SAVE KE SUPABASE CLOUD (Direct Persistence)
+// Fungsi-fungsi berikut otomatis mengirim data ke Supabase seketika saat user simpan
+// ==============================================================================
+
+export async function cloudUpsertGoal(goal: Goal) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('goals').upsert({
+      id: goal.id,
+      title: goal.title,
+      description: goal.description,
+      category: goal.category,
+      target_value: goal.targetValue,
+      current_value: goal.currentValue,
+      unit: goal.unit,
+      deadline: goal.deadline,
+      status: goal.status,
+      priority: goal.priority,
+      color: goal.color,
+      created_at: goal.createdAt,
+      updated_at: goal.updatedAt
+    });
+  } catch (err) {
+    console.warn('Auto-save goal to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteGoal(goalId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('goals').delete().eq('id', goalId);
+  } catch (err) {
+    console.warn('Auto-delete goal from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertProject(project: Project) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('projects').upsert({
+      id: project.id,
+      goal_id: project.goalId || null,
+      title: project.title,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      start_date: project.startDate,
+      due_date: project.dueDate,
+      category: project.category,
+      tags: project.tags,
+      created_at: project.createdAt,
+      updated_at: project.updatedAt
+    });
+  } catch (err) {
+    console.warn('Auto-save project to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteProject(projectId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('projects').delete().eq('id', projectId);
+  } catch (err) {
+    console.warn('Auto-delete project from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertTask(task: Task) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('tasks').upsert({
+      id: task.id,
+      project_id: task.projectId || null,
+      goal_id: task.goalId || null,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      eisenhower: task.eisenhower,
+      due_date: task.dueDate,
+      estimated_minutes: task.estimatedMinutes,
+      actual_minutes: task.actualMinutes,
+      scheduled_date: task.scheduledDate,
+      scheduled_start_time: task.scheduledStartTime,
+      scheduled_end_time: task.scheduledEndTime,
+      calendar_event_id: task.calendarEventId,
+      is_completed: task.isCompleted,
+      completed_at: task.completedAt,
+      tags: task.tags,
+      created_at: task.createdAt,
+      updated_at: task.updatedAt
+    });
+  } catch (err) {
+    console.warn('Auto-save task to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteTask(taskId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('tasks').delete().eq('id', taskId);
+  } catch (err) {
+    console.warn('Auto-delete task from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertCalendarEvent(event: CalendarEvent) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('calendar_events').upsert({
+      id: event.id,
+      task_id: event.taskId || null,
+      project_id: event.projectId || null,
+      title: event.title,
+      description: event.description,
+      start_time: event.startTime,
+      end_time: event.endTime,
+      category: event.category,
+      location_or_link: event.locationOrLink,
+      is_completed: event.isCompleted,
+      color: event.color,
+      created_at: event.createdAt,
+      updated_at: event.updatedAt || event.createdAt
+    });
+  } catch (err) {
+    console.warn('Auto-save event to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteCalendarEvent(eventId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('calendar_events').delete().eq('id', eventId);
+  } catch (err) {
+    console.warn('Auto-delete event from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertNote(note: Note) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('notes').upsert({
+      id: note.id,
+      project_id: note.projectId || null,
+      goal_id: note.goalId || null,
+      title: note.title,
+      content: note.content,
+      category: note.category,
+      tags: note.tags,
+      is_pinned: note.isPinned,
+      created_at: note.createdAt,
+      updated_at: note.updatedAt
+    });
+  } catch (err) {
+    console.warn('Auto-save note to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteNote(noteId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('notes').delete().eq('id', noteId);
+  } catch (err) {
+    console.warn('Auto-delete note from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertRoutine(routine: Routine) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('routines').upsert({
+      id: routine.id,
+      title: routine.title,
+      description: routine.description,
+      frequency: routine.frequency,
+      time_of_day: routine.timeOfDay,
+      category: routine.category,
+      target_days_per_week: routine.targetDaysPerWeek,
+      completed_dates: routine.completedDates,
+      streak: routine.streak,
+      created_at: routine.createdAt
+    });
+  } catch (err) {
+    console.warn('Auto-save routine to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteRoutine(routineId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('routines').delete().eq('id', routineId);
+  } catch (err) {
+    console.warn('Auto-delete routine from cloud error:', err);
+  }
+}
+
+export async function cloudUpsertSettings(settings: UserSettings) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('settings').upsert({
+      id: settings.id,
+      user_name: settings.userName,
+      business_name: settings.businessName,
+      currency: settings.currency,
+      default_weekly_goal_hours: settings.defaultWeeklyGoalHours,
+      theme: settings.theme,
+      has_completed_onboarding: settings.hasCompletedOnboarding,
+      goal_categories: settings.goalCategories,
+      updated_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.warn('Auto-save settings to cloud error:', err);
+  }
+}
+
+export async function cloudUpsertCategory(categoryName: string, color?: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('business_categories').upsert({
+      id: `cat-${Date.now()}`,
+      name: categoryName,
+      color: color || '#3b82f6',
+      created_at: new Date().toISOString()
+    }, { onConflict: 'name' });
+  } catch (err) {
+    console.warn('Auto-save category to cloud error:', err);
+  }
+}
+
+export async function cloudDeleteCategory(categoryName: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await supabase.from('business_categories').delete().eq('name', categoryName);
+  } catch (err) {
+    console.warn('Auto-delete category from cloud error:', err);
   }
 }

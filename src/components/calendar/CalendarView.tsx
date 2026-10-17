@@ -27,6 +27,7 @@ import {
 import { id } from 'date-fns/locale';
 import { db } from '../../db';
 import type { CalendarEvent } from '../../types';
+import { cloudUpsertCalendarEvent, cloudDeleteCalendarEvent } from '../../lib/supabase';
 import { 
   formatTimeOnly, 
   CALENDAR_CATEGORY_LABELS 
@@ -73,13 +74,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const handleDeleteEvent = async (id: string, title: string) => {
     if (window.confirm(`Hapus agenda "${title}" dari kalender?`)) {
       await db.calendarEvents.delete(id);
+      cloudDeleteCalendarEvent(id).catch(console.error);
     }
   };
 
   const handleToggleEvent = async (event: CalendarEvent) => {
-    await db.calendarEvents.update(event.id, {
-      isCompleted: !event.isCompleted
-    });
+    const updatedEvent: CalendarEvent = {
+      ...event,
+      isCompleted: !event.isCompleted,
+      updatedAt: new Date().toISOString()
+    };
+    await db.calendarEvents.put(updatedEvent);
+    cloudUpsertCalendarEvent(updatedEvent).catch(console.error);
   };
 
   const weekDayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];

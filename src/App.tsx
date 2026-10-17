@@ -11,6 +11,7 @@ import type {
 import { Menu, Search, Plus } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDatabase } from './db';
+import { isSupabaseConfigured, syncSupabaseToLocal } from './lib/supabase';
 import { Sidebar } from './components/layout/Sidebar';
 import { GlobalSearch } from './components/common/GlobalSearch';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
@@ -66,9 +67,16 @@ export default function App() {
   const [routineModalOpen, setRoutineModalOpen] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<Routine | null>(null);
 
-  // Initialize DB with seed data on mount
+  // Initialize DB and auto-pull from Supabase cloud on mount
   useEffect(() => {
-    initializeDatabase().catch(console.error);
+    initializeDatabase()
+      .then(async () => {
+        if (isSupabaseConfigured()) {
+          console.log('[Supabase Cloud] Inisialisasi sinkronisasi otomatis dari cloud...');
+          await syncSupabaseToLocal();
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const handleNavigate = (tab: ActiveTab, itemId?: string) => {

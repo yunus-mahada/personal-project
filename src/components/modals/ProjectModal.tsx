@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db } from '../../db';
+import { cloudUpsertProject } from '../../lib/supabase';
 import type { Project, ProjectPriority, ProjectStatus } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 
@@ -81,6 +82,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     };
 
     await db.projects.put(projData);
+    cloudUpsertProject(projData);
     onClose();
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db } from '../../db';
 import type { Routine, RoutineFrequency, RoutineTimeOfDay } from '../../types';
+import { cloudUpsertRoutine } from '../../lib/supabase';
 
 interface RoutineModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
     };
 
     await db.routines.put(routineData);
+    cloudUpsertRoutine(routineData).catch(console.error);
     onClose();
   };
 

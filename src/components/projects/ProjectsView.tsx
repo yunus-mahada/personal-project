@@ -25,6 +25,7 @@ import {
   PROJECT_STATUS_LABELS, 
   PRIORITY_LABELS 
 } from '../../utils/formatters';
+import { cloudUpsertProject, cloudDeleteProject, cloudUpsertTask } from '../../lib/supabase';
 
 interface ProjectsViewProps {
   onOpenProjectModal: (proj?: Project) => void;
@@ -79,6 +80,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       status: nextStatus,
       updatedAt: nowIso
     });
+    const updated = await db.projects.get(projectId);
+    if (updated) cloudUpsertProject(updated).catch(console.error);
+
     if (nextStatus === 'completed') {
       confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
     }
@@ -86,23 +90,30 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   // Quick update project priority directly from table
   const handleQuickPriorityChange = async (projectId: string, nextPriority: ProjectPriority) => {
+    const nowIso = new Date().toISOString();
     await db.projects.update(projectId, {
       priority: nextPriority,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     });
+    const updated = await db.projects.get(projectId);
+    if (updated) cloudUpsertProject(updated).catch(console.error);
   };
 
   // Quick assign / change parent goal directly from table
   const handleQuickGoalChange = async (projectId: string, nextGoalId: string) => {
+    const nowIso = new Date().toISOString();
     await db.projects.update(projectId, {
       goalId: nextGoalId === 'none' ? undefined : nextGoalId,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     });
+    const updated = await db.projects.get(projectId);
+    if (updated) cloudUpsertProject(updated).catch(console.error);
   };
 
   // Safe delete project without window.confirm
   const handleExecuteDelete = async (id: string) => {
     await db.projects.delete(id);
+    cloudDeleteProject(id).catch(console.error);
     setConfirmDeleteId(null);
     if (activeProjectDetail?.id === id) {
       setActiveProjectDetail(null);
@@ -112,12 +123,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const handleToggleTask = async (task: Task) => {
     const nextCompleted = !task.isCompleted;
     const nowIso = new Date().toISOString();
-    await db.tasks.update(task.id, {
+    const updatedTask: Task = {
+      ...task,
       isCompleted: nextCompleted,
       status: nextCompleted ? 'done' : 'todo',
       completedAt: nextCompleted ? nowIso : undefined,
       updatedAt: nowIso
-    });
+    };
+    await db.tasks.put(updatedTask);
+    cloudUpsertTask(updatedTask).catch(console.error);
 
     if (nextCompleted) {
       confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });

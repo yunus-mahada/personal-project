@@ -125,6 +125,24 @@ CREATE TABLE IF NOT EXISTS public.routines (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 8. Tabel Business Categories (Daftar Opsi Kategori Bisnis Dropdown)
+CREATE TABLE IF NOT EXISTS public.business_categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT DEFAULT '#3b82f6',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Isi kategori bawaan default ke Supabase:
+INSERT INTO public.business_categories (id, name, color) VALUES
+    ('cat-1', 'Pendapatan (Revenue)', '#2563eb'),
+    ('cat-2', 'Pemasaran (Marketing)', '#7c3aed'),
+    ('cat-3', 'Produk (Product)', '#059669'),
+    ('cat-4', 'Operasional (Operations)', '#d97706'),
+    ('cat-5', 'Klien (Client & Sales)', '#0891b2'),
+    ('cat-6', 'Personal & Kepemimpinan', '#dc2626')
+ON CONFLICT (name) DO NOTHING;
+
 -- ==============================================================================
 -- Indeks untuk Performa Query Cepat
 -- ==============================================================================
@@ -134,6 +152,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_goal_id ON public.tasks(goal_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
 CREATE INDEX IF NOT EXISTS idx_calendar_events_task_id ON public.calendar_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_notes_project_id ON public.notes(project_id);
+CREATE INDEX IF NOT EXISTS idx_business_categories_name ON public.business_categories(name);
 
 -- ==============================================================================
 -- Row Level Security (RLS) Setup
@@ -146,6 +165,7 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calendar_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.routines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_categories ENABLE ROW LEVEL SECURITY;
 
 -- Policy Akses Penuh untuk anon & authenticated users (Cocok untuk Personal Single-User App)
 DO $$
@@ -170,4 +190,7 @@ BEGIN
 
     DROP POLICY IF EXISTS "Akses Penuh Routines" ON public.routines;
     CREATE POLICY "Akses Penuh Routines" ON public.routines FOR ALL USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Akses Penuh Business Categories" ON public.business_categories;
+    CREATE POLICY "Akses Penuh Business Categories" ON public.business_categories FOR ALL USING (true) WITH CHECK (true);
 END $$;

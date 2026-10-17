@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db } from '../../db';
-import type { Task, TaskPriority, TaskStatus, EisenhowerQuadrant } from '../../types';
+import type { Task, TaskPriority, TaskStatus, EisenhowerQuadrant, CalendarEvent } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { cloudUpsertTask, cloudUpsertCalendarEvent, cloudDeleteCalendarEvent } from '../../lib/supabase';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -122,12 +123,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     };
 
     await db.tasks.put(taskData);
+    cloudUpsertTask(taskData).catch(console.error);
 
     // Sync with calendar event
     if (scheduleOnCalendar && dueDate && startTime && endTime) {
       const startDateTime = `${dueDate}T${startTime}:00`;
       const endDateTime = `${dueDate}T${endTime}:00`;
-      await db.calendarEvents.put({
+      const eventData: CalendarEvent = {
         id: calEventId!,
         taskId: taskId,
         projectId: projectId || undefined,
@@ -140,9 +142,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         color: priority === 'urgent' ? '#dc2626' : '#2563eb',
         createdAt: nowIso,
         updatedAt: nowIso
-      });
+      };
+      await db.calendarEvents.put(eventData);
+      cloudUpsertCalendarEvent(eventData).catch(console.error);
     } else if (taskToEdit?.calendarEventId && !scheduleOnCalendar) {
       await db.calendarEvents.delete(taskToEdit.calendarEventId);
+      cloudDeleteCalendarEvent(taskToEdit.calendarEventId).catch(console.error);
     }
 
     onClose();

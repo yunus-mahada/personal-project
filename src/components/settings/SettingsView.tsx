@@ -33,7 +33,10 @@ import {
   isSupabaseConfigured, 
   testSupabaseConnection, 
   syncLocalToSupabase, 
-  syncSupabaseToLocal 
+  syncSupabaseToLocal,
+  cloudUpsertSettings,
+  cloudUpsertCategory,
+  cloudDeleteCategory
 } from '../../lib/supabase';
 
 type SettingsTab = 'profile' | 'categories' | 'setup';
@@ -103,7 +106,9 @@ export const SettingsView: React.FC = () => {
         : categories
     };
     await db.settings.put(updatedSettings);
-    setSaveStatus('Pengaturan profil berhasil disimpan!');
+    cloudUpsertSettings(updatedSettings).catch(console.error);
+
+    setSaveStatus('Pengaturan profil berhasil disimpan & disinkronkan!');
     setTimeout(() => setSaveStatus(null), 3000);
   };
 
@@ -120,7 +125,7 @@ export const SettingsView: React.FC = () => {
 
     const updated = [...categories, trimmed];
     const existing = await db.settings.get('user_default');
-    await db.settings.put({
+    const updatedSettings: any = {
       ...(existing || {}),
       id: 'user_default',
       userName: existing?.userName || userName || 'Yunus Mahada',
@@ -130,9 +135,13 @@ export const SettingsView: React.FC = () => {
       theme: 'dark',
       hasCompletedOnboarding: true,
       goalCategories: updated
-    });
+    };
+    await db.settings.put(updatedSettings);
+    cloudUpsertSettings(updatedSettings).catch(console.error);
+    cloudUpsertCategory(trimmed).catch(console.error);
+
     setNewCategoryName('');
-    setNotice({ text: `Kategori "${trimmed}" berhasil ditambahkan ke sistem!`, type: 'success' });
+    setNotice({ text: `Kategori "${trimmed}" berhasil ditambahkan & disinkronkan ke Supabase!`, type: 'success' });
     setTimeout(() => setNotice(null), 3500);
   };
 
@@ -145,7 +154,7 @@ export const SettingsView: React.FC = () => {
 
     const updated = categories.filter(c => c !== cat);
     const existing = await db.settings.get('user_default');
-    await db.settings.put({
+    const updatedSettings: any = {
       ...(existing || {}),
       id: 'user_default',
       userName: existing?.userName || userName || 'Yunus Mahada',
@@ -155,17 +164,28 @@ export const SettingsView: React.FC = () => {
       theme: 'dark',
       hasCompletedOnboarding: true,
       goalCategories: updated
-    });
+    };
+    await db.settings.put(updatedSettings);
+    cloudUpsertSettings(updatedSettings).catch(console.error);
+    cloudDeleteCategory(cat).catch(console.error);
+
     setCategoryToDelete(null);
-    setNotice({ text: `Kategori "${cat}" berhasil dihapus.`, type: 'success' });
+    setNotice({ text: `Kategori "${cat}" berhasil dihapus dari sistem & Supabase.`, type: 'success' });
     setTimeout(() => setNotice(null), 3500);
   };
 
   // Reset Categories to Default
   const handleResetCategories = async () => {
-    await db.settings.update('user_default', {
+    const existing = await db.settings.get('user_default');
+    const updatedSettings: any = {
+      ...(existing || {}),
+      id: 'user_default',
       goalCategories: DEFAULT_GOAL_CATEGORIES
-    });
+    };
+    await db.settings.put(updatedSettings);
+    cloudUpsertSettings(updatedSettings).catch(console.error);
+    DEFAULT_GOAL_CATEGORIES.forEach(cat => cloudUpsertCategory(cat).catch(console.error));
+
     setNotice({ text: 'Daftar kategori berhasil direset ke standar Personal Project.', type: 'success' });
     setTimeout(() => setNotice(null), 3500);
   };
