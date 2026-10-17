@@ -1,6 +1,6 @@
-# 🚀 Mahada Indonesia — Personal Business Project Manager
+# 🚀 Personal Project — Management Hub
 
-Aplikasi manajemen proyek bisnis personal & produktivitas eksekutif **Mahada Indonesia** dengan arsitektur **PWA (Offline-First)**, pelacakan Goal-Project-Task (Eisenhower Matrix), kalender time-blocking, analitik performa, dan sinkronisasi cloud dengan **Supabase**.
+Aplikasi manajemen proyek personal & produktivitas eksekutif **Personal Project** dengan arsitektur **PWA (Offline-First)**, pelacakan Goal-Project-Task (Eisenhower Matrix), kalender time-blocking, analitik performa, dan sinkronisasi cloud dengan **Supabase**.
 
 ---
 

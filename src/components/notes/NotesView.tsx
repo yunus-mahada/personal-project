@@ -81,7 +81,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
             Catatan & Dokumen Bisnis
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Knowledge base terpusat Mahada Indonesia untuk SOP, strategi penetrasi pasar, risalah rapat, dan dokumentasi operasional.
+            Knowledge base terpusat Personal Project untuk SOP, strategi penetrasi pasar, risalah rapat, dan dokumentasi operasional.
           </p>
         </div>
 

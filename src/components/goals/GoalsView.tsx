@@ -137,7 +137,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Pantau realisasi target kuantitatif Mahada Indonesia dan perbarui status atau progres langsung dari tabel secara cepat.
+            Pantau realisasi target kuantitatif Personal Project dan perbarui status atau progres langsung dari tabel secara cepat.
           </p>
         </div>
 
@@ -253,7 +253,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
           <Target className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
           <h3 className="text-sm font-semibold text-white">Belum Ada Sasaran Sesuai Filter</h3>
           <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-            Mulai susun roadmap bisnis Mahada Indonesia dengan membuat sasaran strategis baru.
+            Mulai susun roadmap bisnis Personal Project dengan membuat sasaran strategis baru.
           </p>
           <button
             onClick={() => onOpenGoalModal()}

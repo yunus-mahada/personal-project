@@ -50,7 +50,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
           <div>
             <h2 className="text-sm font-semibold text-white">Buat Entitas Baru</h2>
-            <p className="text-xs text-zinc-400">Pilih jenis data yang ingin Anda tambahkan ke Mahada Indonesia</p>
+            <p className="text-xs text-zinc-400">Pilih jenis data yang ingin Anda tambahkan ke Personal Project</p>
           </div>
           <button
             onClick={onClose}

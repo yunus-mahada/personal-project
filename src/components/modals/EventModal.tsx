@@ -95,7 +95,7 @@ export const EventModal: React.FC<EventModalProps> = ({
               {eventToEdit ? 'Ubah Agenda Kalender' : 'Jadwalkan Agenda Bisnis'}
             </h2>
             <p className="text-xs text-zinc-400">
-              Blok waktu kerja (Time Blocking), sesi fokus, atau rapat bisnis Mahada Indonesia
+              Blok waktu kerja (Time Blocking), sesi fokus, atau rapat bisnis Personal Project
             </p>
           </div>
           <button

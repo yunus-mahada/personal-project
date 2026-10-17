@@ -76,7 +76,7 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
             Rutinitas & Kebiasaan Eksekutif
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Bangun kedisiplinan operasional Mahada Indonesia melalui kebiasaan harian, review arus kas berkala, dan evaluasi fokus.
+            Bangun kedisiplinan operasional melalui kebiasaan harian, review berkala, dan evaluasi fokus Personal Project.
           </p>
         </div>
 

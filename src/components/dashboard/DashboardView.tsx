@@ -150,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>·</span>
             <span>WIB (Asia/Jakarta)</span>
             <span>·</span>
-            <span className="text-blue-400 font-semibold">{settings?.businessName || 'Mahada Indonesia'}</span>
+            <span className="text-blue-400 font-semibold">{settings?.businessName || 'Personal Project'}</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mt-1">
             Selamat datang, {settings?.userName || 'Yunus'}

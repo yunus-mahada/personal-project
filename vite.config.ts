@@ -32,9 +32,9 @@ export default defineConfig(({ command, mode }) => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
-          name: 'Mahada Indonesia - Personal Business Project Manager',
-          short_name: 'Mahada Indonesia',
-          description: 'Aplikasi manajemen proyek bisnis personal & produktivitas Mahada Indonesia dengan arsitektur PWA offline-first.',
+          name: 'Personal Project',
+          short_name: 'Personal Project',
+          description: 'Aplikasi manajemen proyek personal & produktivitas dengan arsitektur PWA offline-first.',
           theme_color: '#181b20',
           background_color: '#121316',
           display: 'standalone',

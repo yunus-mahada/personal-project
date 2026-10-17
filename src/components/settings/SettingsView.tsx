@@ -51,7 +51,7 @@ export const SettingsView: React.FC = () => {
 
   // Profile Form States
   const [userName, setUserName] = useState(settings?.userName || 'Yunus Mahada');
-  const [businessName, setBusinessName] = useState(settings?.businessName || 'Mahada Indonesia');
+  const [businessName, setBusinessName] = useState(settings?.businessName || 'Personal Project');
   const [currency, setCurrency] = useState<'IDR' | 'USD' | 'EUR' | 'SGD'>(settings?.currency || 'IDR');
   const [defaultWeeklyHours, setDefaultWeeklyHours] = useState<number>(settings?.defaultWeeklyGoalHours || 40);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export const SettingsView: React.FC = () => {
   React.useEffect(() => {
     if (settings) {
       setUserName(settings.userName || 'Yunus Mahada');
-      setBusinessName(settings.businessName || 'Mahada Indonesia');
+      setBusinessName(settings.businessName || 'Personal Project');
       setCurrency(settings.currency || 'IDR');
       setDefaultWeeklyHours(settings.defaultWeeklyGoalHours || 40);
     }
@@ -141,7 +141,7 @@ export const SettingsView: React.FC = () => {
     await db.settings.update('user_default', {
       goalCategories: DEFAULT_GOAL_CATEGORIES
     });
-    setNotice({ text: 'Daftar kategori berhasil direset ke standar Mahada Indonesia.', type: 'success' });
+    setNotice({ text: 'Daftar kategori berhasil direset ke standar Personal Project.', type: 'success' });
     setTimeout(() => setNotice(null), 3500);
   };
 
@@ -189,7 +189,7 @@ export const SettingsView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mahada-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `personal-project-backup-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -207,7 +207,7 @@ export const SettingsView: React.FC = () => {
       if (success) {
         setNotice({ text: 'Data cadangan berhasil diimpor ke sistem!', type: 'success' });
       } else {
-        setNotice({ text: 'Gagal mengimpor file. Format data tidak sesuai standar Mahada Indonesia.', type: 'error' });
+        setNotice({ text: 'Gagal mengimpor file. Format data tidak sesuai standar Personal Project.', type: 'error' });
       }
       setTimeout(() => setNotice(null), 4000);
     };
@@ -225,7 +225,7 @@ export const SettingsView: React.FC = () => {
   const handleExecuteReset = async () => {
     await resetDatabaseWithSamples();
     setShowResetConfirm(false);
-    setNotice({ text: 'Database berhasil diisi dengan data percontohan demo Mahada Indonesia!', type: 'success' });
+    setNotice({ text: 'Database berhasil diisi dengan data percontohan demo Personal Project!', type: 'success' });
     setTimeout(() => setNotice(null), 4000);
   };
 
@@ -237,7 +237,7 @@ export const SettingsView: React.FC = () => {
           Pengaturan Sistem & Manajemen Data
         </h1>
         <p className="text-xs text-zinc-400 mt-0.5">
-          Kelola profil eksekutif, opsi kategori bisnis dropdown, dan seluruh infrastruktur data aplikasi Mahada Indonesia.
+          Kelola profil eksekutif, opsi kategori bisnis dropdown, dan seluruh infrastruktur data aplikasi Personal Project.
         </p>
       </div>
 
@@ -670,7 +670,7 @@ export const SettingsView: React.FC = () => {
 
             <div className="text-xs text-zinc-300 space-y-2">
               <p>
-                Mahada Indonesia Project Manager dirancang dengan arsitektur <strong>Offline-First</strong>. Aplikasi dapat dipasang langsung ke layar utama perangkat desktop, Android, maupun iPhone tanpa memerlukan toko aplikasi pihak ketiga.
+                Personal Project dirancang dengan arsitektur <strong>Offline-First</strong>. Aplikasi dapat dipasang langsung ke layar utama perangkat desktop, Android, maupun iPhone tanpa memerlukan toko aplikasi pihak ketiga.
               </p>
               <p>
                 Semua perubahan data disimpan secara instan ke IndexedDB di browser Anda dan tetap dapat diakses penuh tanpa koneksi internet.
@@ -739,7 +739,7 @@ export const SettingsView: React.FC = () => {
                   ) : (
                     <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-700 space-y-2.5 w-full">
                       <p className="text-xs text-zinc-300 font-medium">
-                        Muat data contoh demo Mahada Indonesia? Data buatan Anda akan ditimpa dengan data percontohan demo.
+                        Muat data contoh demo Personal Project? Data buatan Anda akan ditimpa dengan data percontohan demo.
                       </p>
                       <div className="flex items-center gap-2">
                         <button

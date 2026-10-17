@@ -9,7 +9,8 @@ import type {
   Routine 
 } from './types';
 import { Menu, Search, Plus } from 'lucide-react';
-import { initializeDatabase } from './db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, initializeDatabase } from './db';
 import { Sidebar } from './components/layout/Sidebar';
 import { GlobalSearch } from './components/common/GlobalSearch';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
@@ -35,6 +36,7 @@ import { NoteModal } from './components/modals/NoteModal';
 import { RoutineModal } from './components/modals/RoutineModal';
 
 export default function App() {
+  const settings = useLiveQuery(() => db.settings.get('user_default'));
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -134,10 +136,10 @@ export default function App() {
           </button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ring-1 ring-blue-400/30">
-              M
+              P
             </div>
             <span className="text-sm font-bold text-white tracking-tight">
-              Mahada Indonesia
+              {settings?.businessName || 'Personal Project'}
             </span>
           </div>
         </div>

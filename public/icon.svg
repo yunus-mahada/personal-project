@@ -11,8 +11,8 @@
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
   <rect x="6" y="6" width="500" height="500" rx="106" fill="none" stroke="#2d3340" stroke-width="8"/>
-  <!-- Mahada Indonesia Monogram: Precision geometric M -->
-  <path d="M130 376 V136 H182 L256 264 L330 136 H382 V376 H334 V226 L268 338 H244 L178 226 V376 Z" fill="#ffffff"/>
+  <!-- Personal Project Monogram: Precision geometric P -->
+  <path d="M150 136 H280 C335 136 362 165 362 208 C362 251 335 280 280 280 H198 V376 H150 Z M198 238 H276 C302 238 314 228 314 208 C314 188 302 178 276 178 H198 Z" fill="#ffffff"/>
   <!-- Vibrant Accent dot -->
-  <circle cx="382" cy="136" r="18" fill="#3b82f6"/>
+  <circle cx="362" cy="136" r="18" fill="#3b82f6"/>
 </svg>

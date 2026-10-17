@@ -93,7 +93,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
               {goalToEdit ? 'Ubah Sasaran Bisnis' : 'Tambah Sasaran Bisnis Baru'}
             </h2>
             <p className="text-xs text-zinc-400">
-              Sasaran utama (Goal) Mahada Indonesia memayungi proyek dan metrik target
+              Sasaran utama (Goal) Personal Project memayungi proyek dan metrik target
             </p>
           </div>
           <button

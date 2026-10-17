@@ -81,7 +81,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
               {noteToEdit ? 'Ubah Catatan / Dokumen' : 'Buat Catatan Bisnis Baru'}
             </h2>
             <p className="text-xs text-zinc-400">
-              Dokumentasikan strategi, SOP, risalah rapat, atau ide cepat Mahada Indonesia
+              Dokumentasikan strategi, SOP, risalah rapat, atau ide cepat Personal Project
             </p>
           </div>
           <button

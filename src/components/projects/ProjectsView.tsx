@@ -138,7 +138,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Kelola inisiatif bisnis Mahada Indonesia, perbarui status, prioritas, timeline, dan tugas secara instan langsung dari tabel.
+            Kelola inisiatif bisnis Personal Project, perbarui status, prioritas, timeline, dan tugas secara instan langsung dari tabel.
           </p>
         </div>
 
@@ -260,7 +260,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         <div className="p-12 text-center rounded-2xl bg-[#181b20] border border-[#262b34]">
           <FolderKanban className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
           <h3 className="text-sm font-semibold text-white">Belum Ada Proyek Sesuai Filter</h3>
-          <p className="text-xs text-zinc-400 mt-1">Tambahkan proyek baru untuk mulai mengorganisir tugas Mahada Indonesia.</p>
+          <p className="text-xs text-zinc-400 mt-1">Tambahkan proyek baru untuk mulai mengorganisir tugas Personal Project.</p>
           <button
             onClick={() => onOpenProjectModal()}
             className="mt-4 px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition cursor-pointer"

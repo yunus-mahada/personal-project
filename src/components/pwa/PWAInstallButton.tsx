@@ -19,7 +19,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
         className={`flex items-center gap-2 font-medium text-white bg-[#1f232a] hover:bg-[#282d36] border border-[#2d333f] rounded-lg transition-colors shadow-xs ${
           compact ? 'px-2.5 py-1.5 text-xs' : 'px-3.5 py-2 text-xs'
         }`}
-        title="Pasang Mahada Indonesia ke Perangkat Anda (PWA)"
+        title="Pasang Personal Project ke Perangkat Anda (PWA)"
       >
         <Download className="w-3.5 h-3.5 shrink-0 text-blue-400" />
         <span className="whitespace-nowrap">Install App</span>

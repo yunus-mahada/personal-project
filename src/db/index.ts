@@ -52,8 +52,8 @@ export async function initializeDatabase() {
     const existing = await db.settings.get('user_default');
     if (existing) {
       const updates: Partial<UserSettings> = {};
-      if (!existing.businessName || existing.businessName.includes('Nexora')) {
-        updates.businessName = 'Mahada Indonesia';
+      if (!existing.businessName || existing.businessName === 'Mahada Indonesia' || existing.businessName.includes('Nexora')) {
+        updates.businessName = 'Personal Project';
       }
       if (!existing.goalCategories || existing.goalCategories.length === 0) {
         updates.goalCategories = DEFAULT_GOAL_CATEGORIES;
@@ -85,7 +85,7 @@ export async function seedInitialData() {
   const defaultSettings: UserSettings = {
     id: 'user_default',
     userName: 'Yunus Mahada',
-    businessName: 'Mahada Indonesia',
+    businessName: 'Personal Project',
     currency: 'IDR',
     defaultWeeklyGoalHours: 40,
     theme: 'dark',

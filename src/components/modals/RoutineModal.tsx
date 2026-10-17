@@ -104,7 +104,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
             </label>
             <textarea
               rows={2}
-              placeholder="Mengapa kebiasaan ini krusial untuk performa bisnis Mahada Indonesia?"
+              placeholder="Mengapa kebiasaan ini krusial untuk performa bisnis Personal Project?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none resize-none"

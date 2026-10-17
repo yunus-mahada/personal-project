@@ -130,7 +130,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
             Daftar Tugas & Eksekusi Operasional
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Papan Kanban, tampilan tabel terstruktur, dan Matrix Eisenhower untuk eksekusi bisnis Mahada Indonesia.
+            Papan Kanban, tampilan tabel terstruktur, dan Matrix Eisenhower untuk eksekusi bisnis Personal Project.
           </p>
         </div>
 

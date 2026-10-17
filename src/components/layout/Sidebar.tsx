@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="mb-4 pb-3.5 border-b border-[#262b34] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-extrabold text-sm shrink-0 tracking-tight shadow-md ring-1 ring-blue-400/30">
-                M
+                P
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-white tracking-tight truncate">

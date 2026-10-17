@@ -58,7 +58,7 @@ export const AnalyticsView: React.FC = () => {
           Analitik Performa & Laporan Bisnis
         </h1>
         <p className="text-xs text-zinc-400 mt-0.5">
-          Evaluasi kecepatan penyelesaian tugas (Velocity), rasio pengiriman proyek Mahada Indonesia, dan alokasi waktu fokus.
+          Evaluasi kecepatan penyelesaian tugas (Velocity), rasio pengiriman proyek Personal Project, dan alokasi waktu fokus.
         </p>
       </div>
 

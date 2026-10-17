@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Mahada Indonesia - Database Schema untuk Supabase
+-- Personal Project - Database Schema untuk Supabase
 -- Eksekusi file SQL ini di: Supabase Dashboard -> SQL Editor -> New Query -> Run
 -- ==============================================================================
 
@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS public.settings (
     id TEXT PRIMARY KEY DEFAULT 'user_default',
     user_name TEXT NOT NULL DEFAULT 'Yunus Mahada',
-    business_name TEXT NOT NULL DEFAULT 'Mahada Indonesia',
+    business_name TEXT NOT NULL DEFAULT 'Personal Project',
     currency TEXT NOT NULL DEFAULT 'IDR',
     default_weekly_goal_hours INTEGER NOT NULL DEFAULT 40,
     theme TEXT NOT NULL DEFAULT 'dark',

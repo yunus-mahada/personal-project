@@ -158,7 +158,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               {taskToEdit ? 'Ubah Rincian Tugas' : 'Tambah Tugas Baru'}
             </h2>
             <p className="text-xs text-zinc-400">
-              Sinkronisasi otomatis dengan Proyek & Kalender Mahada Indonesia
+              Sinkronisasi otomatis dengan Proyek & Kalender Personal Project
             </p>
           </div>
           <button

@@ -93,7 +93,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             Kalender Bisnis & Time Blocking
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Sinkronkan tugas operasional Mahada Indonesia, jadwalkan sesi fokus (Deep Work), dan rapat bisnis.
+            Sinkronkan tugas operasional Personal Project, jadwalkan sesi fokus (Deep Work), dan rapat bisnis.
           </p>
         </div>
 
