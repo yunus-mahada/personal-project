@@ -19,7 +19,8 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { db } from '../../db';
-import type { Project, Goal, Task, ProjectStatus, ProjectPriority, ActiveTab } from '../../types';
+import type { Project, Task, ProjectStatus, ProjectPriority, ActiveTab } from '../../types';
+import { DEFAULT_GOAL_CATEGORIES } from '../../types';
 import { 
   formatDateIndo, 
   PROJECT_STATUS_LABELS, 
@@ -40,9 +41,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onNavigate,
   selectedProjectId: initialSelectedId
 }) => {
-  // Default to 'table' per user requirement ("pada sasaran bisnis dan proyek dibuat tabel saja agar mudah proses pengupdatean")
+  // Default to 'table' per user requirement ("pada proyek dibuat tabel saja agar mudah proses pengupdatean")
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeProjectDetail, setActiveProjectDetail] = useState<Project | null>(null);
 
@@ -50,9 +52,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
-  const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const settings = useLiveQuery(() => db.settings.get('user_default'));
+
+  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+    ? settings.goalCategories
+    : DEFAULT_GOAL_CATEGORIES;
 
   React.useEffect(() => {
     if (initialSelectedId && projects.length > 0) {
@@ -63,6 +68,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const filteredProjects = projects.filter(p => {
     if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+    if (filterCategory !== 'all' && p.category !== filterCategory) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = p.title.toLowerCase().includes(q);
@@ -99,11 +105,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     if (updated) cloudUpsertProject(updated).catch(console.error);
   };
 
-  // Quick assign / change parent goal directly from table
-  const handleQuickGoalChange = async (projectId: string, nextGoalId: string) => {
+  // Quick update project category directly from table (using business categories from settings)
+  const handleQuickCategoryChange = async (projectId: string, nextCategory: string) => {
     const nowIso = new Date().toISOString();
     await db.projects.update(projectId, {
-      goalId: nextGoalId === 'none' ? undefined : nextGoalId,
+      category: nextCategory,
       updatedAt: nowIso
     });
     const updated = await db.projects.get(projectId);
@@ -244,6 +250,24 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               Selesai ({projects.filter(p => p.status === 'completed').length})
             </button>
           </div>
+
+          <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
+
+          {/* Business Category Filter Dropdown */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-zinc-500 hidden xl:inline">Kategori:</span>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="text-xs rounded-lg px-2.5 py-1.5 border border-[#2a2f3a] bg-[#121417] text-zinc-300 focus:outline-none focus:border-blue-500 cursor-pointer"
+              title="Filter proyek berdasarkan kategori bisnis dari pengaturan"
+            >
+              <option value="all">Semua Kategori Bisnis</option>
+              {availableCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* View Mode Switcher */}
@@ -290,7 +314,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <thead>
                 <tr className="border-b border-[#262b34] bg-[#14161a] text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                   <th className="py-3 px-4 min-w-[220px]">Nama Proyek</th>
-                  <th className="py-3 px-3 min-w-[160px]">Sasaran Induk</th>
+                  <th className="py-3 px-3 min-w-[170px]">Kategori Bisnis</th>
                   <th className="py-3 px-3 min-w-[170px]">Status (Update Cepat)</th>
                   <th className="py-3 px-3 min-w-[130px]">Prioritas</th>
                   <th className="py-3 px-3 min-w-[180px]">Tugas Selesai</th>
@@ -300,7 +324,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </thead>
               <tbody className="divide-y divide-[#222731] text-xs">
                 {filteredProjects.map((p) => {
-                  const parentGoal = goals.find(g => g.id === p.goalId);
                   const pTasks = tasks.filter(t => t.projectId === p.id);
                   const doneCount = pTasks.filter(t => t.isCompleted).length;
                   const pPercent = pTasks.length > 0 ? Math.round((doneCount / pTasks.length) * 100) : 0;
@@ -311,7 +334,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       key={p.id}
                       className="hover:bg-[#1f232b]/80 transition group"
                     >
-                      {/* 1. Nama Proyek & Kategori */}
+                      {/* 1. Nama Proyek */}
                       <td className="py-3.5 px-4">
                         <div className="min-w-0">
                           <button
@@ -321,31 +344,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           >
                             {p.title}
                           </button>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-zinc-400 bg-[#222731] px-1.5 py-0.2 rounded border border-[#2d3340]">
-                              {p.category}
+                          {p.description && (
+                            <span className="text-[11px] text-zinc-500 truncate max-w-[200px] block mt-0.5">
+                              {p.description}
                             </span>
-                            {p.description && (
-                              <span className="text-[11px] text-zinc-500 truncate max-w-[180px]">
-                                {p.description}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </td>
 
-                      {/* 2. Sasaran Induk (Interactive Selector) */}
+                      {/* 2. Kategori Bisnis (Interactive Dropdown from Settings) */}
                       <td className="py-3.5 px-3">
                         <select
-                          value={p.goalId || 'none'}
-                          onChange={(e) => handleQuickGoalChange(p.id, e.target.value)}
+                          value={p.category}
+                          onChange={(e) => handleQuickCategoryChange(p.id, e.target.value)}
                           className="w-full text-xs rounded-lg px-2 py-1 border bg-[#121417] text-zinc-300 border-[#2a2f3a] focus:outline-none focus:border-blue-500 cursor-pointer truncate"
-                          title="Tautkan atau ubah sasaran induk proyek"
+                          title="Ubah kategori bisnis proyek langsung dari tabel"
                         >
-                          <option value="none">- Tanpa Sasaran -</option>
-                          {goals.map(g => (
-                            <option key={g.id} value={g.id}>
-                              {g.title}
+                          {availableCategories.map(cat => (
+                            <option key={cat} value={cat}>
+                              {cat}
                             </option>
                           ))}
                         </select>
@@ -488,7 +505,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         /* Grid Card View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
-            const parentGoal = goals.find(g => g.id === project.goalId);
             const projectTasks = tasks.filter(t => t.projectId === project.id);
             const completedCount = projectTasks.filter(t => t.isCompleted).length;
             const progressPercent = projectTasks.length > 0 ? Math.round((completedCount / projectTasks.length) * 100) : 0;
@@ -531,14 +547,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
                     {project.description}
                   </p>
-
-                  {/* Parent Goal Reference */}
-                  {parentGoal && (
-                    <div className="mt-3 flex items-center gap-1.5 text-[11px] text-blue-400 font-medium">
-                      <Target className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{parentGoal.title}</span>
-                    </div>
-                  )}
 
                   {/* Tasks Progress Bar */}
                   <div className="mt-4">

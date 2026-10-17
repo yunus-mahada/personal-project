@@ -1,33 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Tag } from 'lucide-react';
 import { db } from '../../db';
 import { cloudUpsertProject } from '../../lib/supabase';
 import type { Project, ProjectPriority, ProjectStatus } from '../../types';
+import { DEFAULT_GOAL_CATEGORIES } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectToEdit?: Project | null;
-  defaultGoalId?: string;
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
   isOpen,
   onClose,
-  projectToEdit,
-  defaultGoalId
+  projectToEdit
 }) => {
-  const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
+  const settings = useLiveQuery(() => db.settings.get('user_default'));
+  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+    ? settings.goalCategories
+    : DEFAULT_GOAL_CATEGORIES;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [goalId, setGoalId] = useState(defaultGoalId || '');
   const [status, setStatus] = useState<ProjectStatus>('in_progress');
   const [priority, setPriority] = useState<ProjectPriority>('high');
   const [startDate, setStartDate] = useState('2026-10-16');
   const [dueDate, setDueDate] = useState('2026-11-30');
-  const [category, setCategory] = useState('Inisiatif Strategis');
+  const [category, setCategory] = useState(availableCategories[0] || 'Operasional');
   const [tagsInput, setTagsInput] = useState('');
 
   useEffect(() => {
@@ -36,25 +37,23 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     if (projectToEdit) {
       setTitle(projectToEdit.title);
       setDescription(projectToEdit.description);
-      setGoalId(projectToEdit.goalId || '');
       setStatus(projectToEdit.status);
       setPriority(projectToEdit.priority);
       setStartDate(projectToEdit.startDate);
       setDueDate(projectToEdit.dueDate);
-      setCategory(projectToEdit.category);
+      setCategory(projectToEdit.category || availableCategories[0] || 'Operasional');
       setTagsInput(projectToEdit.tags?.join(', ') || '');
     } else {
       setTitle('');
       setDescription('');
-      setGoalId(defaultGoalId || '');
       setStatus('in_progress');
       setPriority('high');
       setStartDate('2026-10-16');
       setDueDate('2026-11-30');
-      setCategory('Inisiatif Strategis');
+      setCategory(availableCategories[0] || 'Operasional');
       setTagsInput('');
     }
-  }, [projectToEdit, defaultGoalId, isOpen]);
+  }, [projectToEdit, isOpen, availableCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,12 +69,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       id: projectToEdit?.id || `proj-${Date.now()}`,
       title: title.trim(),
       description: description.trim(),
-      goalId: goalId || undefined,
       status,
       priority,
       startDate,
       dueDate,
-      category: category.trim() || 'Inisiatif',
+      category: category.trim() || availableCategories[0] || 'Operasional',
       tags,
       createdAt: projectToEdit?.createdAt || nowIso,
       updatedAt: nowIso
@@ -97,7 +95,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               {projectToEdit ? 'Ubah Rincian Proyek' : 'Tambah Proyek Baru'}
             </h2>
             <p className="text-xs text-zinc-400">
-              Proyek menampung sekumpulan tugas dan dapat ditautkan ke Sasaran Bisnis
+              Kelola inisiatif bisnis dengan kategori dari pengaturan & tugas operasional
             </p>
           </div>
           <button
@@ -136,37 +134,25 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Tautkan ke Sasaran (Goal)
-              </label>
-              <select
-                value={goalId}
-                onChange={(e) => setGoalId(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">(Proyek Independen)</option>
-                {goals.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Kategori
-              </label>
-              <input
-                type="text"
-                placeholder="Penjualan, Engineering, Marketing"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-blue-400" />
+                <span>Kategori Bisnis (Dari Pengaturan)</span>
+              </span>
+              <span className="text-[10px] text-zinc-500">Kelola di menu Pengaturan</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none cursor-pointer"
+            >
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

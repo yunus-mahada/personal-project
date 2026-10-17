@@ -3,18 +3,22 @@ import {
   BarChart3, 
   CheckSquare, 
   FolderKanban, 
-  Target, 
+  Tag, 
   Zap
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
+import { DEFAULT_GOAL_CATEGORIES } from '../../types';
 
 export const AnalyticsView: React.FC = () => {
   const settings = useLiveQuery(() => db.settings.get('user_default'));
-  const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const calendarEvents = useLiveQuery(() => db.calendarEvents.toArray()) ?? [];
+
+  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+    ? settings.goalCategories
+    : DEFAULT_GOAL_CATEGORIES;
 
   // Calculations
   const completedTasks = tasks.filter(t => t.isCompleted);
@@ -22,9 +26,6 @@ export const AnalyticsView: React.FC = () => {
 
   const completedProjects = projects.filter(p => p.status === 'completed');
   const projectDeliveryRate = projects.length > 0 ? Math.round((completedProjects.length / projects.length) * 100) : 0;
-
-  const onTrackGoals = goals.filter(g => g.status === 'on_track' || g.status === 'completed');
-  const goalSuccessRate = goals.length > 0 ? Math.round((onTrackGoals.length / goals.length) * 100) : 0;
 
   // 7-day velocity data
   const last7Days = [
@@ -90,15 +91,15 @@ export const AnalyticsView: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Sasaran On Track</span>
-            <Target className="w-4 h-4 text-amber-400" />
+            <span>Kategori Bisnis</span>
+            <Tag className="w-4 h-4 text-amber-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tabular-nums text-white">{goalSuccessRate}%</span>
-            <span className="text-[11px] text-zinc-500">({onTrackGoals.length}/{goals.length})</span>
+            <span className="text-2xl font-bold tabular-nums text-white">{availableCategories.length}</span>
+            <span className="text-[11px] text-zinc-500">Kategori</span>
           </div>
           <p className="text-[11px] text-zinc-400 mt-1">
-            Target bisnis sesuai jadwal
+            Terdaftar di Pengaturan
           </p>
         </div>
 
@@ -238,53 +239,55 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Strategic Goals Completion Matrix */}
+      {/* Business Categories Project Distribution */}
       <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 shadow-xs">
         <div className="pb-3 border-b border-zinc-800 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-white">
-              Status Capaian Sasaran Bisnis (Goal Velocity)
+              Distribusi Proyek Berdasarkan Kategori Bisnis
             </h2>
             <p className="text-xs text-zinc-400">
-              Perbandingan metrik target kuantitatif dan estimasi pencapaian akhir kuartal
+              Pemetaan inisiatif proyek dan rasio penyelesaian tugas berdasarkan kategori dari pengaturan
             </p>
           </div>
           <span className="text-xs text-zinc-400 font-medium tabular-nums">
-            {goals.length} Sasaran Aktif
+            {availableCategories.length} Kategori Bisnis
           </span>
         </div>
 
         <div className="divide-y divide-zinc-800 mt-2">
-          {goals.map((goal) => {
-            const pct = Math.min(100, Math.round((goal.currentValue / goal.targetValue) * 100));
+          {availableCategories.map((cat, idx) => {
+            const catProjects = projects.filter(p => p.category === cat);
+            const catTasks = tasks.filter(t => catProjects.some(p => p.id === t.projectId));
+            const doneTasks = catTasks.filter(t => t.isCompleted);
+            const pct = catTasks.length > 0 ? Math.round((doneTasks.length / catTasks.length) * 100) : 0;
 
             return (
-              <div key={goal.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div key={cat} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0 max-w-md">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-zinc-400 uppercase">
-                      {goal.category}
+                    <span className="w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-semibold text-zinc-400 flex items-center justify-center shrink-0">
+                      {idx + 1}
                     </span>
-                    <span aria-hidden="true" className="text-zinc-600">·</span>
                     <span className="text-xs font-semibold text-white truncate">
-                      {goal.title}
+                      {cat}
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
-                    {goal.description}
+                  <p className="text-[11px] text-zinc-400 mt-1 pl-7">
+                    {catProjects.length} Proyek Terdaftar ({catProjects.filter(p => p.status === 'completed').length} Selesai)
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 sm:w-64 shrink-0">
+                <div className="flex items-center gap-4 sm:w-64 shrink-0 pl-7 sm:pl-0">
                   <div className="flex-1">
                     <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
-                      <span className="tabular-nums">{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                      <span className="tabular-nums">{doneTasks.length} / {catTasks.length} Tugas Selesai</span>
                       <span className="font-bold tabular-nums text-white">{pct}%</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-zinc-950 border border-zinc-800 overflow-hidden">
                       <div 
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: goal.color || '#3b82f6' }}
+                        className="h-full rounded-full bg-blue-600 transition-all duration-300"
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>

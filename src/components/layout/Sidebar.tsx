@@ -50,14 +50,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   // Live counts for quick indicators
-  const goalsCount = useLiveQuery(() => db.goals.count()) ?? 0;
   const projectsCount = useLiveQuery(() => db.projects.where('status').notEqual('completed').count()) ?? 0;
   const pendingTasksCount = useLiveQuery(() => db.tasks.where('isCompleted').equals(0 as any).count()) ?? 0;
   const settings = useLiveQuery(() => db.settings.get('user_default'));
 
   const navItems = [
     { id: 'dashboard' as ActiveTab, label: 'Ringkasan', icon: LayoutDashboard },
-    { id: 'goals' as ActiveTab, label: 'Sasaran Bisnis', icon: Target, badge: goalsCount > 0 ? goalsCount : undefined },
     { id: 'projects' as ActiveTab, label: 'Proyek', icon: FolderKanban, badge: projectsCount > 0 ? projectsCount : undefined },
     { id: 'tasks' as ActiveTab, label: 'Daftar Tugas', icon: CheckSquare, badge: pendingTasksCount > 0 ? pendingTasksCount : undefined },
     { id: 'calendar' as ActiveTab, label: 'Kalender Bisnis', icon: Calendar },

@@ -21,12 +21,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   defaultDate
 }) => {
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
-  const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
-  const [goalId, setGoalId] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [eisenhower, setEisenhower] = useState<EisenhowerQuadrant>('do_first');
@@ -46,7 +44,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(taskToEdit.title);
       setDescription(taskToEdit.description || '');
       setProjectId(taskToEdit.projectId || '');
-      setGoalId(taskToEdit.goalId || '');
       setStatus(taskToEdit.status);
       setPriority(taskToEdit.priority);
       setEisenhower(taskToEdit.eisenhower || 'do_first');
@@ -79,12 +76,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleProjectChange = (selectedProjId: string) => {
     setProjectId(selectedProjId);
-    if (selectedProjId) {
-      const p = projects.find(item => item.id === selectedProjId);
-      if (p?.goalId) {
-        setGoalId(p.goalId);
-      }
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,7 +96,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       title: title.trim(),
       description: description.trim() || undefined,
       projectId: projectId || undefined,
-      goalId: goalId || undefined,
       status: status,
       priority: priority,
       eisenhower: eisenhower,
@@ -205,42 +195,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Proyek Terkait
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => handleProjectChange(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">(Tanpa Proyek Khusus)</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Sasaran Bisnis (Goal)
-              </label>
-              <select
-                value={goalId}
-                onChange={(e) => setGoalId(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">(Tanpa Sasaran Khusus)</option>
-                {goals.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">
+              Proyek Terkait
+            </label>
+            <select
+              value={projectId}
+              onChange={(e) => handleProjectChange(e.target.value)}
+              className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none cursor-pointer"
+            >
+              <option value="">(Tanpa Proyek Khusus - Tugas Bebas)</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

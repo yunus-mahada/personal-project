@@ -12,7 +12,7 @@ import {
 interface QuickCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'task' | 'goal' | 'project' | 'event' | 'note' | 'routine') => void;
+  onSelectType: (type: 'task' | 'project' | 'event' | 'note' | 'routine') => void;
 }
 
 export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
@@ -22,11 +22,10 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 }) => {
   const options = [
     { type: 'task' as const, label: 'Tugas Baru', desc: 'Rencanakan aksi operasional & integrasikan ke jadwal', icon: CheckSquare, color: 'text-blue-400 bg-blue-950/80 border border-blue-900/60', hotkey: '1' },
-    { type: 'project' as const, label: 'Proyek Baru', desc: 'Inisiatif proyek baru dengan timeline & target', icon: FolderKanban, color: 'text-amber-400 bg-amber-950/80 border border-amber-900/60', hotkey: '2' },
-    { type: 'goal' as const, label: 'Sasaran Bisnis (Goal)', desc: 'Target pencapaian strategis kuartal atau tahunan', icon: Target, color: 'text-emerald-400 bg-emerald-950/80 border border-emerald-900/60', hotkey: '3' },
-    { type: 'event' as const, label: 'Agenda Kalender', desc: 'Blok waktu fokus (Deep Work) atau pertemuan klien', icon: Calendar, color: 'text-purple-400 bg-purple-950/80 border border-purple-900/60', hotkey: '4' },
-    { type: 'note' as const, label: 'Catatan / SOP Baru', desc: 'Dokumentasi risalah rapat, ide, atau pedoman kerja', icon: FileText, color: 'text-indigo-400 bg-indigo-950/80 border border-indigo-900/60', hotkey: '5' },
-    { type: 'routine' as const, label: 'Rutinitas Bisnis', desc: 'Kebiasaan eksekutif harian & pelacak disiplin', icon: Repeat, color: 'text-teal-400 bg-teal-950/80 border border-teal-900/60', hotkey: '6' },
+    { type: 'project' as const, label: 'Proyek Baru', desc: 'Inisiatif proyek baru dengan timeline & kategori bisnis', icon: FolderKanban, color: 'text-amber-400 bg-amber-950/80 border border-amber-900/60', hotkey: '2' },
+    { type: 'event' as const, label: 'Agenda Kalender', desc: 'Blok waktu fokus (Deep Work) atau pertemuan bisnis', icon: Calendar, color: 'text-purple-400 bg-purple-950/80 border border-purple-900/60', hotkey: '3' },
+    { type: 'note' as const, label: 'Catatan / SOP Baru', desc: 'Dokumentasi risalah rapat, ide, atau pedoman kerja', icon: FileText, color: 'text-indigo-400 bg-indigo-950/80 border border-indigo-900/60', hotkey: '4' },
+    { type: 'routine' as const, label: 'Rutinitas Bisnis', desc: 'Kebiasaan eksekutif harian & pelacak disiplin', icon: Repeat, color: 'text-teal-400 bg-teal-950/80 border border-teal-900/60', hotkey: '5' },
   ];
 
   useEffect(() => {

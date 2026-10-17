@@ -453,7 +453,7 @@ export const SettingsView: React.FC = () => {
                 <span>Pengaturan Pilihan Kategori Bisnis (Dropdown)</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Kategori yang terdaftar di sini akan menjadi pilihan opsi dropdown pada formulir **Sasaran Bisnis (Goals)** dan filter kategori di seluruh sistem.
+                Kategori yang terdaftar di sini akan menjadi pilihan opsi dropdown pada formulir **Proyek (Projects)** dan filter kategori di seluruh sistem.
               </p>
             </div>
 

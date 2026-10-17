@@ -17,6 +17,8 @@ export const DEFAULT_GOAL_CATEGORIES: string[] = [
   'Personal & Kepemimpinan'
 ];
 
+export const DEFAULT_BUSINESS_CATEGORIES = DEFAULT_GOAL_CATEGORIES;
+
 export type GoalStatus = 'on_track' | 'at_risk' | 'behind' | 'completed';
 export type GoalPriority = 'high' | 'medium' | 'low';
 
@@ -145,7 +147,6 @@ export interface UserSettings {
 
 export type ActiveTab = 
   | 'dashboard' 
-  | 'goals' 
   | 'projects' 
   | 'tasks' 
   | 'calendar' 

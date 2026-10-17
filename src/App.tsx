@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import type { 
   ActiveTab, 
   Task, 
-  Goal, 
   Project, 
   CalendarEvent, 
   Note, 
@@ -18,7 +17,6 @@ import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 // Views
 import { DashboardView } from './components/dashboard/DashboardView';
-import { GoalsView } from './components/goals/GoalsView';
 import { ProjectsView } from './components/projects/ProjectsView';
 import { TasksView } from './components/tasks/TasksView';
 import { CalendarView } from './components/calendar/CalendarView';
@@ -30,7 +28,6 @@ import { SettingsView } from './components/settings/SettingsView';
 // Modals
 import { QuickCreateModal } from './components/modals/QuickCreateModal';
 import { TaskModal } from './components/modals/TaskModal';
-import { GoalModal } from './components/modals/GoalModal';
 import { ProjectModal } from './components/modals/ProjectModal';
 import { EventModal } from './components/modals/EventModal';
 import { NoteModal } from './components/modals/NoteModal';
@@ -49,12 +46,8 @@ export default function App() {
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [taskDefaultProjectId, setTaskDefaultProjectId] = useState<string | undefined>(undefined);
 
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [goalToEdit, setGoalToEdit] = useState<Goal | null>(null);
-
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
-  const [projectDefaultGoalId, setProjectDefaultGoalId] = useState<string | undefined>(undefined);
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<CalendarEvent | null>(null);
@@ -92,14 +85,8 @@ export default function App() {
     setTaskModalOpen(true);
   };
 
-  const handleOpenGoalModal = (goal?: Goal) => {
-    setGoalToEdit(goal || null);
-    setGoalModalOpen(true);
-  };
-
-  const handleOpenProjectModal = (proj?: Project, defaultGoalId?: string) => {
+  const handleOpenProjectModal = (proj?: Project) => {
     setProjectToEdit(proj || null);
-    setProjectDefaultGoalId(defaultGoalId);
     setProjectModalOpen(true);
   };
 
@@ -120,10 +107,9 @@ export default function App() {
     setRoutineModalOpen(true);
   };
 
-  const handleSelectQuickCreateType = (type: 'task' | 'goal' | 'project' | 'event' | 'note' | 'routine') => {
+  const handleSelectQuickCreateType = (type: 'task' | 'project' | 'event' | 'note' | 'routine') => {
     setQuickCreateOpen(false);
     if (type === 'task') handleOpenTaskModal();
-    if (type === 'goal') handleOpenGoalModal();
     if (type === 'project') handleOpenProjectModal();
     if (type === 'event') handleOpenEventModal();
     if (type === 'note') handleOpenNoteModal();
@@ -188,17 +174,8 @@ export default function App() {
             <DashboardView
               onNavigate={handleNavigate}
               onOpenTaskModal={handleOpenTaskModal}
-              onOpenGoalModal={handleOpenGoalModal}
               onOpenProjectModal={handleOpenProjectModal}
               onOpenEventModal={handleOpenEventModal}
-            />
-          )}
-
-          {activeTab === 'goals' && (
-            <GoalsView
-              onOpenGoalModal={handleOpenGoalModal}
-              onOpenProjectModal={handleOpenProjectModal}
-              onNavigate={handleNavigate}
             />
           )}
 
@@ -275,15 +252,6 @@ export default function App() {
         defaultProjectId={taskDefaultProjectId}
       />
 
-      <GoalModal
-        isOpen={goalModalOpen}
-        onClose={() => {
-          setGoalModalOpen(false);
-          setGoalToEdit(null);
-        }}
-        goalToEdit={goalToEdit}
-      />
-
       <ProjectModal
         isOpen={projectModalOpen}
         onClose={() => {
@@ -291,7 +259,6 @@ export default function App() {
           setProjectToEdit(null);
         }}
         projectToEdit={projectToEdit}
-        defaultGoalId={projectDefaultGoalId}
       />
 
       <EventModal

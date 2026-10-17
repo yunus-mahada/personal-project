@@ -17,7 +17,6 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
 }) => {
   const [query, setQuery] = useState('');
 
-  const goals = useLiveQuery(() => db.goals.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const notes = useLiveQuery(() => db.notes.toArray()) ?? [];
@@ -42,7 +41,6 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     const q = query.trim().toLowerCase();
     if (!q) {
       return {
-        goals: goals.slice(0, 2),
         projects: projects.slice(0, 3),
         tasks: tasks.slice(0, 4),
         notes: notes.slice(0, 2)
@@ -50,14 +48,13 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     }
 
     return {
-      goals: goals.filter(g => g.title.toLowerCase().includes(q) || g.category.toLowerCase().includes(q)),
-      projects: projects.filter(p => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)),
+      projects: projects.filter(p => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)),
       tasks: tasks.filter(t => t.title.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q))),
       notes: notes.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
     };
-  }, [query, goals, projects, tasks, notes]);
+  }, [query, projects, tasks, notes]);
 
-  const totalResults = results.goals.length + results.projects.length + results.tasks.length + results.notes.length;
+  const totalResults = results.projects.length + results.tasks.length + results.notes.length;
 
   if (!isOpen) return null;
 
@@ -143,33 +140,6 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                         <span className="truncate text-zinc-200 font-medium">{proj.title}</span>
                       </div>
                       <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Goals Results */}
-              {results.goals.length > 0 && (
-                <div className="py-2">
-                  <p className="px-2 pb-1 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
-                    Sasaran Bisnis ({results.goals.length})
-                  </p>
-                  {results.goals.map(goal => (
-                    <button
-                      key={goal.id}
-                      onClick={() => {
-                        onNavigate('goals', goal.id);
-                        onClose();
-                      }}
-                      className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-zinc-800 text-left transition group"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate text-zinc-200 font-medium">{goal.title}</span>
-                      </div>
-                      <span className="text-[10px] text-zinc-500 shrink-0">
-                        {goal.category}
-                      </span>
                     </button>
                   ))}
                 </div>
