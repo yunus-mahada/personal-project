@@ -360,6 +360,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           className="w-full text-xs rounded-lg px-2 py-1 border bg-[#121417] text-zinc-300 border-[#2a2f3a] focus:outline-none focus:border-blue-500 cursor-pointer truncate"
                           title="Ubah kategori bisnis proyek langsung dari tabel"
                         >
+                          {!availableCategories.includes(p.category) && p.category && (
+                            <option value={p.category}>
+                              {p.category} (Perlu disesuaikan)
+                            </option>
+                          )}
                           {availableCategories.map(cat => (
                             <option key={cat} value={cat}>
                               {cat}

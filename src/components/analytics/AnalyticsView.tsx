@@ -395,52 +395,128 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
         </div>
 
         <div className="divide-y divide-zinc-800/80">
-          {availableCategories.map((cat, idx) => {
-            const catProjects = projects.filter(p => p.category === cat);
-            const catTasks = tasks.filter(t => catProjects.some(p => p.id === t.projectId));
-            const doneTasks = catTasks.filter(t => t.isCompleted);
-            const pct = catTasks.length > 0 ? Math.round((doneTasks.length / catTasks.length) * 100) : 0;
+          {(() => {
+            const isCategoryMatch = (p: { category?: string; title?: string }, cat: string) => {
+              if (!cat) return false;
+              const target = cat.toLowerCase().trim();
+              const pCat = p.category?.toLowerCase().trim();
+              if (pCat === target) return true;
+              if (p.title?.toLowerCase().trim().includes(target)) return true;
+              return false;
+            };
+
+            // Track which tasks and projects are accounted for
+            const matchedProjectIds = new Set<string>();
+            const matchedTaskIds = new Set<string>();
+
+            const categoryRows = availableCategories.map((cat, idx) => {
+              const catProjects = projects.filter(p => {
+                const match = isCategoryMatch(p, cat);
+                if (match) matchedProjectIds.add(p.id);
+                return match;
+              });
+              const completedCatProjects = catProjects.filter(p => p.status === 'completed');
+              
+              const catTasks = tasks.filter(t => {
+                const match = catProjects.some(p => p.id === t.projectId) || 
+                              t.tags?.some(tag => tag.toLowerCase().trim() === cat.toLowerCase().trim());
+                if (match) matchedTaskIds.add(t.id);
+                return match;
+              });
+              const doneTasks = catTasks.filter(t => t.isCompleted);
+              const pct = catTasks.length > 0 ? Math.round((doneTasks.length / catTasks.length) * 100) : 0;
+
+              return (
+                <div key={cat} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-zinc-950/40 px-2 rounded-lg transition-colors">
+                  <div className="min-w-0 max-w-md">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-semibold text-zinc-400 flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span className="text-xs font-semibold text-white truncate">
+                        {cat}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1 pl-7">
+                      {catProjects.length} Proyek Terdaftar ({completedCatProjects.length} Selesai)
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 sm:w-72 shrink-0 pl-7 sm:pl-0">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+                        <span className="tabular-nums">{doneTasks.length} / {catTasks.length} Tugas Selesai</span>
+                        <span className="font-bold tabular-nums text-white">{pct}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-zinc-950 border border-zinc-800 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onNavigate?.('projects')}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-white transition cursor-pointer"
+                      title="Lihat Proyek Terkait"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            });
+
+            // Check if there are unassigned tasks (tasks created without specific project)
+            const unassignedTasks = tasks.filter(t => !matchedTaskIds.has(t.id));
+            const unassignedDone = unassignedTasks.filter(t => t.isCompleted);
+            const unassignedPct = unassignedTasks.length > 0 ? Math.round((unassignedDone.length / unassignedTasks.length) * 100) : 0;
 
             return (
-              <div key={cat} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-zinc-950/40 px-2 rounded-lg transition-colors">
-                <div className="min-w-0 max-w-md">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-semibold text-zinc-400 flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-semibold text-white truncate">
-                      {cat}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 mt-1 pl-7">
-                    {catProjects.length} Proyek Terdaftar ({catProjects.filter(p => p.status === 'completed').length} Selesai)
-                  </p>
-                </div>
+              <>
+                {categoryRows}
+                {unassignedTasks.length > 0 && (
+                  <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-zinc-950/40 px-2 rounded-lg transition-colors border-t border-dashed border-zinc-800">
+                    <div className="min-w-0 max-w-md">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-zinc-800/60 text-[10px] font-semibold text-zinc-500 flex items-center justify-center shrink-0">
+                          •
+                        </span>
+                        <span className="text-xs font-medium text-zinc-300 truncate">
+                          Tugas Mandiri (Tanpa Proyek Khusus)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mt-1 pl-7">
+                        Aksi operasional cepat yang tidak dikelompokkan ke proyek tertentu
+                      </p>
+                    </div>
 
-                <div className="flex items-center gap-4 sm:w-72 shrink-0 pl-7 sm:pl-0">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
-                      <span className="tabular-nums">{doneTasks.length} / {catTasks.length} Tugas Selesai</span>
-                      <span className="font-bold tabular-nums text-white">{pct}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-zinc-950 border border-zinc-800 overflow-hidden">
-                      <div 
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300"
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="flex items-center gap-4 sm:w-72 shrink-0 pl-7 sm:pl-0">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+                          <span className="tabular-nums">{unassignedDone.length} / {unassignedTasks.length} Tugas Selesai</span>
+                          <span className="font-bold tabular-nums text-emerald-400">{unassignedPct}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-zinc-950 border border-zinc-800 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full bg-emerald-600 transition-all duration-300"
+                            style={{ width: `${unassignedPct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onNavigate?.('tasks')}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-white transition cursor-pointer"
+                        title="Lihat Daftar Tugas"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => onNavigate?.('projects')}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-white transition cursor-pointer"
-                    title="Lihat Proyek"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                )}
+              </>
             );
-          })}
+          })()}
         </div>
       </div>
 

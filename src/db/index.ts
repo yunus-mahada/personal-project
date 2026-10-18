@@ -61,6 +61,24 @@ export async function initializeDatabase() {
       if (Object.keys(updates).length > 0) {
         await db.settings.update('user_default', updates);
       }
+
+      // Auto-align any legacy/unmapped project categories to current business categories
+      try {
+        const allProjects = await db.projects.toArray();
+        const activeCategories = existing.goalCategories || DEFAULT_GOAL_CATEGORIES;
+        for (const p of allProjects) {
+          if (!activeCategories.includes(p.category)) {
+            const matched = activeCategories.find(c => 
+              p.title?.toLowerCase().includes(c.toLowerCase()) || 
+              p.category?.toLowerCase().includes(c.toLowerCase())
+            );
+            const newCat = matched || activeCategories[0] || 'Finance';
+            await db.projects.update(p.id, { category: newCat });
+          }
+        }
+      } catch (catAlignErr) {
+        console.error('Error auto-aligning project categories:', catAlignErr);
+      }
     }
   }
 
