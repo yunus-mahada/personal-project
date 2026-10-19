@@ -24,7 +24,7 @@ export class MahadaDatabase extends Dexie {
     this.version(1).stores({
       goals: 'id, category, status, priority, deadline, createdAt',
       projects: 'id, goalId, status, priority, dueDate, createdAt',
-      tasks: 'id, projectId, goalId, status, priority, dueDate, scheduledDate, isCompleted, createdAt',
+      tasks: 'id, projectId, goalId, category, status, priority, dueDate, scheduledDate, isCompleted, createdAt',
       calendarEvents: 'id, taskId, projectId, category, startTime, isCompleted, createdAt',
       notes: 'id, projectId, goalId, category, isPinned, createdAt',
       routines: 'id, frequency, timeOfDay, createdAt',

@@ -129,15 +129,22 @@ export const EventModal: React.FC<EventModalProps> = ({
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as CalendarEventCategory)}
-              className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white"
+              onChange={(e) => {
+                const nextCat = e.target.value as CalendarEventCategory;
+                setCategory(nextCat);
+                if (nextCat === 'meeting') setColor('#9333ea');
+                else if (nextCat === 'review') setColor('#d97706');
+                else if (nextCat === 'deep_work') setColor('#2563eb');
+                else if (nextCat === 'client') setColor('#059669');
+              }}
+              className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white cursor-pointer"
             >
-              <option value="deep_work">Deep Work (Sesi Fokus Tanpa Gangguan)</option>
-              <option value="meeting">Rapat Koordinasi Internal</option>
-              <option value="client">Pertemuan Klien / Pitch</option>
-              <option value="milestone">Milestone / Tenggat Kunci</option>
-              <option value="review">Evaluasi & Tinjauan Kas</option>
-              <option value="routine">Rutinitas Eksekutif</option>
+              <option value="meeting">👥 Rapat / Meeting Koordinasi Bisnis</option>
+              <option value="review">📊 Sesi Evaluasi &amp; Tinjauan Kinerja</option>
+              <option value="deep_work">⚡ Deep Work (Sesi Fokus Tanpa Gangguan)</option>
+              <option value="client">🤝 Pertemuan Klien / Pitching</option>
+              <option value="milestone">🚩 Milestone / Tenggat Kunci</option>
+              <option value="routine">🔁 Rutinitas Eksekutif</option>
             </select>
           </div>
 

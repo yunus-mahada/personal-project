@@ -110,3 +110,30 @@ export const EISENHOWER_LABELS: Record<string, { label: string; desc: string; co
   delegate: { label: 'Delegasikan', desc: 'Mendesak, Kurang Penting (Alihkan jika bisa)', color: '#d97706' },
   dont_do: { label: 'Eliminasi', desc: 'Tidak Mendesak & Tidak Penting (Tinggalkan)', color: '#6b7280' }
 };
+
+export const TASK_CATEGORY_LABELS: Record<string, { label: string; textClass: string; bgClass: string; borderClass: string; dotColor: string; color: string }> = {
+  Meeting: {
+    label: 'Meeting',
+    textClass: 'text-purple-300',
+    bgClass: 'bg-purple-950/60',
+    borderClass: 'border-purple-800/80',
+    dotColor: '#a855f7',
+    color: '#9333ea'
+  },
+  Evaluasi: {
+    label: 'Evaluasi',
+    textClass: 'text-amber-300',
+    bgClass: 'bg-amber-950/60',
+    borderClass: 'border-amber-800/80',
+    dotColor: '#f59e0b',
+    color: '#d97706'
+  },
+  Tugas: {
+    label: 'Tugas',
+    textClass: 'text-blue-300',
+    bgClass: 'bg-blue-950/60',
+    borderClass: 'border-blue-800/80',
+    dotColor: '#3b82f6',
+    color: '#2563eb'
+  }
+};

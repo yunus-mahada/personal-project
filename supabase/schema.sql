@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     goal_id TEXT REFERENCES public.goals(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     description TEXT,
+    category TEXT NOT NULL DEFAULT 'Tugas',
     status TEXT NOT NULL DEFAULT 'todo',
     priority TEXT NOT NULL DEFAULT 'medium',
     eisenhower TEXT DEFAULT 'schedule',
@@ -79,6 +80,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migrasi aman untuk kolom category pada tasks
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Tugas';
 
 -- 5. Tabel Calendar Events (Jadwal Kegiatan & Time Blocking)
 CREATE TABLE IF NOT EXISTS public.calendar_events (

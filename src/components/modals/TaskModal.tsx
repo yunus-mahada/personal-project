@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db } from '../../db';
-import type { Task, TaskPriority, TaskStatus, EisenhowerQuadrant, CalendarEvent } from '../../types';
+import type { Task, TaskPriority, TaskStatus, EisenhowerQuadrant, CalendarEvent, TaskCategory } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cloudUpsertTask, cloudUpsertCalendarEvent, cloudDeleteCalendarEvent } from '../../lib/supabase';
 
@@ -27,6 +27,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
+  const [category, setCategory] = useState<TaskCategory>('Tugas');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [eisenhower, setEisenhower] = useState<EisenhowerQuadrant>('do_first');
@@ -46,6 +47,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(taskToEdit.title);
       setDescription(taskToEdit.description || '');
       setProjectId(taskToEdit.projectId || '');
+      setCategory(taskToEdit.category || 'Tugas');
       setStatus(taskToEdit.status);
       setPriority(taskToEdit.priority);
       setEisenhower(taskToEdit.eisenhower || 'do_first');
@@ -63,6 +65,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle('');
       setDescription('');
       setProjectId(defaultProjectId || '');
+      setCategory('Tugas');
       setStatus('todo');
       setPriority('medium');
       setEisenhower('do_first');
@@ -97,6 +100,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       title: title.trim(),
       description: description.trim() || undefined,
       projectId: projectId || undefined,
+      category: category,
       status: status,
       priority: priority,
       eisenhower: eisenhower,
@@ -120,6 +124,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     if (scheduleOnCalendar && dueDate && startTime && endTime) {
       const startDateTime = `${dueDate}T${startTime}:00`;
       const endDateTime = `${dueDate}T${endTime}:00`;
+      
+      const calCat = category === 'Meeting' ? 'meeting' : category === 'Evaluasi' ? 'review' : 'deep_work';
+      const calColor = category === 'Meeting' ? '#7c3aed' : category === 'Evaluasi' ? '#d97706' : (priority === 'urgent' ? '#dc2626' : '#2563eb');
+
       const eventData: CalendarEvent = {
         id: calEventId!,
         taskId: taskId,
@@ -128,9 +136,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         description: description.trim() || undefined,
         startTime: startDateTime,
         endTime: endDateTime,
-        category: priority === 'urgent' ? 'deep_work' : 'deep_work',
+        category: calCat,
         isCompleted: status === 'done',
-        color: priority === 'urgent' ? '#dc2626' : '#2563eb',
+        color: calColor,
         createdAt: nowIso,
         updatedAt: nowIso
       };
@@ -212,6 +220,48 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">
+              Kategori Tugas <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['Tugas', 'Meeting', 'Evaluasi'] as TaskCategory[]).map((cat) => {
+                const isSelected = category === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      setCategory(cat);
+                      if (cat === 'Meeting' || cat === 'Evaluasi') {
+                        setScheduleOnCalendar(true);
+                      }
+                    }}
+                    className={`px-3 py-2 text-xs font-medium rounded-lg border transition flex items-center justify-center gap-1.5 ${
+                      isSelected
+                        ? cat === 'Meeting'
+                          ? 'bg-purple-950/80 border-purple-500 text-purple-200 font-semibold shadow-xs ring-1 ring-purple-500/50'
+                          : cat === 'Evaluasi'
+                          ? 'bg-amber-950/80 border-amber-500 text-amber-200 font-semibold shadow-xs ring-1 ring-amber-500/50'
+                          : 'bg-blue-950/80 border-blue-500 text-blue-200 font-semibold shadow-xs ring-1 ring-blue-500/50'
+                        : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600'
+                    }`}
+                  >
+                    <span>{cat === 'Meeting' ? '👥' : cat === 'Evaluasi' ? '📊' : '✅'}</span>
+                    <span>{cat}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-1">
+              {category === 'Meeting' 
+                ? '📌 Rapat koordinasi, pitching, atau agenda tatap muka (otomatis diberi penanda rapat).' 
+                : category === 'Evaluasi' 
+                ? '📌 Review sprint, tinjauan metrik bisnis, atau audit kas bulanan (otomatis diberi penanda evaluasi).' 
+                : '📌 Tugas eksekusi teknis dan operasional harian.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

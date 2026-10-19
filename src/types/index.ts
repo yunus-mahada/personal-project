@@ -61,6 +61,9 @@ export interface Project {
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
 export type EisenhowerQuadrant = 'do_first' | 'schedule' | 'delegate' | 'dont_do';
+export type TaskCategory = 'Meeting' | 'Evaluasi' | 'Tugas';
+
+export const TASK_CATEGORIES: TaskCategory[] = ['Meeting', 'Evaluasi', 'Tugas'];
 
 export interface Task {
   id: string;
@@ -68,6 +71,7 @@ export interface Task {
   goalId?: string; // Inherited or explicit link
   title: string;
   description?: string;
+  category?: TaskCategory;
   status: TaskStatus;
   priority: TaskPriority;
   eisenhower?: EisenhowerQuadrant;

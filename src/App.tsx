@@ -198,6 +198,7 @@ export default function App() {
           {activeTab === 'calendar' && (
             <CalendarView
               onOpenEventModal={handleOpenEventModal}
+              onOpenTaskModal={handleOpenTaskModal}
             />
           )}
 
