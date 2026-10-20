@@ -66,12 +66,6 @@ export function formatMinutes(minutes?: number): string {
 }
 
 // Status labels & badges in Indonesian
-export const GOAL_STATUS_LABELS: Record<string, { label: string; textClass: string; bgClass: string }> = {
-  on_track: { label: 'Sesuai Target', textClass: 'text-emerald-400', bgClass: 'bg-emerald-950/60 border-emerald-800' },
-  at_risk: { label: 'Perlu Perhatian', textClass: 'text-amber-400', bgClass: 'bg-amber-950/60 border-amber-800' },
-  behind: { label: 'Tertinggal', textClass: 'text-rose-400', bgClass: 'bg-rose-950/60 border-rose-800' },
-  completed: { label: 'Tercapai', textClass: 'text-blue-400', bgClass: 'bg-blue-950/60 border-blue-800' }
-};
 
 export const PROJECT_STATUS_LABELS: Record<string, { label: string; textClass: string }> = {
   planning: { label: 'Perencanaan', textClass: 'text-zinc-400' },

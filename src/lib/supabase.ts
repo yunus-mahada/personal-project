@@ -1,14 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { db } from '../db';
 import { 
-  Goal, 
   Project, 
   Task, 
   CalendarEvent, 
   Note, 
   Routine, 
   UserSettings,
-  DEFAULT_GOAL_CATEGORIES
+  DEFAULT_BUSINESS_CATEGORIES
 } from '../types';
 
 // Ambil kredensial dari environment variable Vite (VITE_*)
@@ -72,9 +71,8 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
   }
 
   try {
-    const [settings, goals, projects, tasks, calendarEvents, notes, routines] = await Promise.all([
+    const [settings, projects, tasks, calendarEvents, notes, routines] = await Promise.all([
       db.settings.toArray(),
-      db.goals.toArray(),
       db.projects.toArray(),
       db.tasks.toArray(),
       db.calendarEvents.toArray(),
@@ -92,39 +90,17 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
         default_weekly_goal_hours: s.defaultWeeklyGoalHours,
         theme: s.theme,
         has_completed_onboarding: s.hasCompletedOnboarding,
-        goal_categories: s.goalCategories || DEFAULT_GOAL_CATEGORIES,
+        goal_categories: s.goalCategories || DEFAULT_BUSINESS_CATEGORIES,
         updated_at: new Date().toISOString()
       }));
       const { error } = await supabase.from('settings').upsert(dbSettings);
       if (error) throw new Error(`Settings sync error: ${error.message}`);
     }
 
-    // 2. Goals
-    if (goals.length > 0) {
-      const dbGoals = goals.map(g => ({
-        id: g.id,
-        title: g.title,
-        description: g.description,
-        category: g.category,
-        target_value: g.targetValue,
-        current_value: g.currentValue,
-        unit: g.unit,
-        deadline: g.deadline,
-        status: g.status,
-        priority: g.priority,
-        color: g.color,
-        created_at: g.createdAt,
-        updated_at: g.updatedAt
-      }));
-      const { error } = await supabase.from('goals').upsert(dbGoals);
-      if (error) throw new Error(`Goals sync error: ${error.message}`);
-    }
-
-    // 3. Projects
+    // 2. Projects
     if (projects.length > 0) {
       const dbProjects = projects.map(p => ({
         id: p.id,
-        goal_id: p.goalId || null,
         title: p.title,
         description: p.description,
         status: p.status,
@@ -140,12 +116,11 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Projects sync error: ${error.message}`);
     }
 
-    // 4. Tasks
+    // 3. Tasks
     if (tasks.length > 0) {
       const dbTasks = tasks.map(t => ({
         id: t.id,
         project_id: t.projectId || null,
-        goal_id: t.goalId || null,
         title: t.title,
         description: t.description,
         category: t.category || 'Tugas',
@@ -169,7 +144,7 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Tasks sync error: ${error.message}`);
     }
 
-    // 5. Calendar Events
+    // 4. Calendar Events
     if (calendarEvents.length > 0) {
       const dbEvents = calendarEvents.map(e => ({
         id: e.id,
@@ -190,12 +165,11 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Calendar events sync error: ${error.message}`);
     }
 
-    // 6. Notes
+    // 5. Notes
     if (notes.length > 0) {
       const dbNotes = notes.map(n => ({
         id: n.id,
         project_id: n.projectId || null,
-        goal_id: n.goalId || null,
         title: n.title,
         content: n.content,
         category: n.category,
@@ -208,7 +182,7 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Notes sync error: ${error.message}`);
     }
 
-    // 7. Routines
+    // 6. Routines
     if (routines.length > 0) {
       const dbRoutines = routines.map(r => ({
         id: r.id,
@@ -229,10 +203,10 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       if (error) throw new Error(`Routines sync error: ${error.message}`);
     }
 
-    // 8. Business Categories Table
-    const activeCategories = (settings[0]?.goalCategories && settings[0].goalCategories.length > 0)
+    // 7. Business Categories Table
+    const activeCategories = (settings[0]?.goalCategories && Array.isArray(settings[0].goalCategories))
       ? settings[0].goalCategories
-      : DEFAULT_GOAL_CATEGORIES;
+      : [];
     
     if (activeCategories.length > 0) {
       const dbCategories = activeCategories.map((cat, idx) => ({
@@ -248,7 +222,6 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
       success: true,
       message: 'Berhasil mengunggah semua data ke Supabase Cloud!',
       counts: {
-        goals: goals.length,
         projects: projects.length,
         tasks: tasks.length,
         calendarEvents: calendarEvents.length,
@@ -276,7 +249,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
   try {
     const [
       { data: settings },
-      { data: goals },
       { data: projects },
       { data: tasks },
       { data: events },
@@ -285,7 +257,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       { data: categories }
     ] = await Promise.all([
       supabase.from('settings').select('*'),
-      supabase.from('goals').select('*'),
       supabase.from('projects').select('*'),
       supabase.from('tasks').select('*'),
       supabase.from('calendar_events').select('*'),
@@ -295,10 +266,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     ]);
 
     // Categories priority from dedicated table if available
-    let resolvedCategories = DEFAULT_GOAL_CATEGORIES;
+    let resolvedCategories: string[] = [];
     if (categories && categories.length > 0) {
       resolvedCategories = categories.map(c => c.name);
-    } else if (settings && settings.length > 0 && Array.isArray(settings[0].goal_categories) && settings[0].goal_categories.length > 0) {
+    } else if (settings && settings.length > 0 && Array.isArray(settings[0].goal_categories)) {
       resolvedCategories = settings[0].goal_categories;
     }
 
@@ -322,33 +293,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (goals) {
-      const cloudIds = new Set(goals.map(g => g.id));
-      const localGoals = await db.goals.toArray();
-      for (const lg of localGoals) {
-        if (!cloudIds.has(lg.id)) {
-          await cloudUpsertGoal(lg).catch(console.error);
-        }
-      }
-      for (const g of goals) {
-        await db.goals.put({
-          id: g.id,
-          title: g.title,
-          description: g.description,
-          category: g.category,
-          targetValue: Number(g.target_value),
-          currentValue: Number(g.current_value),
-          unit: g.unit,
-          deadline: g.deadline,
-          status: g.status,
-          priority: g.priority,
-          color: g.color,
-          createdAt: g.created_at,
-          updatedAt: g.updated_at
-        });
-      }
-    }
-
     if (projects) {
       const cloudIds = new Set(projects.map(p => p.id));
       const localProjects = await db.projects.toArray();
@@ -360,7 +304,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       for (const p of projects) {
         await db.projects.put({
           id: p.id,
-          goalId: p.goal_id,
           title: p.title,
           description: p.description,
           status: p.status,
@@ -387,7 +330,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
         await db.tasks.put({
           id: t.id,
           projectId: t.project_id,
-          goalId: t.goal_id,
           title: t.title,
           description: t.description,
           category: (t.category as any) || 'Tugas',
@@ -432,7 +374,7 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
           isCompleted: Boolean(e.is_completed),
           color: e.color,
           createdAt: e.created_at,
-          updatedAt: e.updated_at || e.created_at
+          updatedAt: e.updated_at || e.createdAt
         });
       }
     }
@@ -449,7 +391,6 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
         await db.notes.put({
           id: n.id,
           projectId: n.project_id,
-          goalId: n.goal_id,
           title: n.title,
           content: n.content,
           category: n.category,
@@ -505,47 +446,12 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
 // Fungsi-fungsi berikut otomatis mengirim data ke Supabase seketika saat user simpan
 // ==============================================================================
 
-export async function cloudUpsertGoal(goal: Goal): Promise<void> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
-  }
-  const { error } = await supabase.from('goals').upsert({
-    id: goal.id,
-    title: goal.title,
-    description: goal.description,
-    category: goal.category,
-    target_value: goal.targetValue,
-    current_value: goal.currentValue,
-    unit: goal.unit,
-    deadline: goal.deadline,
-    status: goal.status,
-    priority: goal.priority,
-    color: goal.color,
-    created_at: goal.createdAt,
-    updated_at: goal.updatedAt
-  });
-  if (error) {
-    console.error('[Supabase Error] Gagal menyimpan Goal ke Cloud:', error);
-    throw new Error(`Gagal menyimpan Sasaran ke Supabase: ${error.message}`);
-  }
-}
-
-export async function cloudDeleteGoal(goalId: string): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  const { error } = await supabase.from('goals').delete().eq('id', goalId);
-  if (error) {
-    console.error('[Supabase Error] Gagal menghapus Goal dari Cloud:', error);
-    throw new Error(`Gagal menghapus Sasaran dari Supabase: ${error.message}`);
-  }
-}
-
 export async function cloudUpsertProject(project: Project): Promise<void> {
   if (!isSupabaseConfigured()) {
     throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
   }
   const { error } = await supabase.from('projects').upsert({
     id: project.id,
-    goal_id: project.goalId || null,
     title: project.title,
     description: project.description,
     status: project.status,
@@ -579,7 +485,6 @@ export async function cloudUpsertTask(task: Task): Promise<void> {
   const { error } = await supabase.from('tasks').upsert({
     id: task.id,
     project_id: task.projectId || null,
-    goal_id: task.goalId || null,
     title: task.title,
     description: task.description,
     category: task.category || 'Tugas',
@@ -655,7 +560,6 @@ export async function cloudUpsertNote(note: Note): Promise<void> {
   const { error } = await supabase.from('notes').upsert({
     id: note.id,
     project_id: note.projectId || null,
-    goal_id: note.goalId || null,
     title: note.title,
     content: note.content,
     category: note.category,
@@ -754,6 +658,24 @@ export async function cloudDeleteCategory(categoryName: string): Promise<void> {
   if (error) {
     console.error('[Supabase Error] Gagal menghapus Category dari Cloud:', error);
     throw new Error(`Gagal menghapus Kategori dari Supabase: ${error.message}`);
+  }
+}
+
+export async function cloudResetCategories(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  // Hapus semua data di tabel business_categories di Supabase
+  const { error: delError } = await supabase.from('business_categories').delete().neq('id', '___empty_reset___');
+  if (delError) {
+    console.error('[Supabase Error] Gagal mereset tabel business_categories:', delError);
+    throw new Error(`Gagal mereset tabel kategori di Supabase: ${delError.message}`);
+  }
+  // Kosongkan array goal_categories pada settings
+  const { error: setErr } = await supabase.from('settings').update({
+    goal_categories: [],
+    updated_at: new Date().toISOString()
+  }).eq('id', 'user_default');
+  if (setErr) {
+    console.warn('[Supabase Warning] Gagal mengupdate settings goal_categories:', setErr.message);
   }
 }
 

@@ -1,10 +1,23 @@
 -- ==============================================================================
--- Personal Project - Database Schema untuk Supabase
--- Eksekusi file SQL ini di: Supabase Dashboard -> SQL Editor -> New Query -> Run
+-- PERSONAL PROJECT MANAGEMENT - FRESH DATABASE SCHEMA (NO GOALS & CLEAN CATEGORIES)
+-- Petunjuk Eksekusi:
+-- 1. Buka Supabase Dashboard -> Proyek Anda
+-- 2. Pilih menu "SQL Editor" di bilah navigasi kiri
+-- 3. Buat "New Query", paste seluruh isi skrip ini, lalu klik "Run"
 -- ==============================================================================
 
--- 1. Tabel Settings (Pengaturan Profil Pengguna & Bisnis)
-CREATE TABLE IF NOT EXISTS public.settings (
+-- 1. Hapus tabel lama (beserta constraint & relasi foreign key)
+DROP TABLE IF EXISTS public.calendar_events CASCADE;
+DROP TABLE IF EXISTS public.tasks CASCADE;
+DROP TABLE IF EXISTS public.notes CASCADE;
+DROP TABLE IF EXISTS public.projects CASCADE;
+DROP TABLE IF EXISTS public.goals CASCADE;
+DROP TABLE IF EXISTS public.routines CASCADE;
+DROP TABLE IF EXISTS public.business_categories CASCADE;
+DROP TABLE IF EXISTS public.settings CASCADE;
+
+-- 2. Tabel Settings (Profil & Pengaturan Bisnis)
+CREATE TABLE public.settings (
     id TEXT PRIMARY KEY DEFAULT 'user_default',
     user_name TEXT NOT NULL DEFAULT 'Yunus Mahada',
     business_name TEXT NOT NULL DEFAULT 'Personal Project',
@@ -12,34 +25,13 @@ CREATE TABLE IF NOT EXISTS public.settings (
     default_weekly_goal_hours INTEGER NOT NULL DEFAULT 40,
     theme TEXT NOT NULL DEFAULT 'dark',
     has_completed_onboarding BOOLEAN NOT NULL DEFAULT true,
-    goal_categories JSONB DEFAULT '["Pendapatan (Revenue)", "Pemasaran (Marketing)", "Produk (Product)", "Operasional (Operations)", "Klien (Client & Sales)", "Personal & Kepemimpinan"]'::jsonb,
+    goal_categories JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Migrasi aman untuk menambahkan kolom goal_categories jika tabel sudah ada:
-ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS goal_categories JSONB DEFAULT '["Pendapatan (Revenue)", "Pemasaran (Marketing)", "Produk (Product)", "Operasional (Operations)", "Klien (Client & Sales)", "Personal & Kepemimpinan"]'::jsonb;
-
--- 2. Tabel Goals (Sasaran / Target Bisnis Utama)
-CREATE TABLE IF NOT EXISTS public.goals (
+-- 3. Tabel Projects (Proyek Bisnis)
+CREATE TABLE public.projects (
     id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    category TEXT NOT NULL DEFAULT 'Operasional',
-    target_value NUMERIC NOT NULL DEFAULT 0,
-    current_value NUMERIC NOT NULL DEFAULT 0,
-    unit TEXT NOT NULL DEFAULT 'Rp',
-    deadline TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'on_track',
-    priority TEXT NOT NULL DEFAULT 'medium',
-    color TEXT DEFAULT '#2563eb',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 3. Tabel Projects (Proyek Bisnis yang terikat ke Goal)
-CREATE TABLE IF NOT EXISTS public.projects (
-    id TEXT PRIMARY KEY,
-    goal_id TEXT REFERENCES public.goals(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     description TEXT,
     status TEXT NOT NULL DEFAULT 'planning',
@@ -52,15 +44,10 @@ CREATE TABLE IF NOT EXISTS public.projects (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Migrasi aman jika tabel sudah dibuat sebelumnya di Supabase:
-ALTER TABLE public.projects DROP COLUMN IF EXISTS budget;
-ALTER TABLE public.projects DROP COLUMN IF EXISTS spent;
-
--- 4. Tabel Tasks (Tugas Proyek dengan Matriks Eisenhower)
-CREATE TABLE IF NOT EXISTS public.tasks (
+-- 4. Tabel Tasks (Tugas Proyek & Matriks Eisenhower)
+CREATE TABLE public.tasks (
     id TEXT PRIMARY KEY,
     project_id TEXT REFERENCES public.projects(id) ON DELETE CASCADE,
-    goal_id TEXT REFERENCES public.goals(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     description TEXT,
     category TEXT NOT NULL DEFAULT 'Tugas',
@@ -81,11 +68,8 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Migrasi aman untuk kolom category pada tasks
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Tugas';
-
--- 5. Tabel Calendar Events (Jadwal Kegiatan & Time Blocking)
-CREATE TABLE IF NOT EXISTS public.calendar_events (
+-- 5. Tabel Calendar Events (Kalender Agenda & Time Blocking)
+CREATE TABLE public.calendar_events (
     id TEXT PRIMARY KEY,
     task_id TEXT REFERENCES public.tasks(id) ON DELETE SET NULL,
     project_id TEXT REFERENCES public.projects(id) ON DELETE SET NULL,
@@ -101,11 +85,10 @@ CREATE TABLE IF NOT EXISTS public.calendar_events (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. Tabel Notes (Catatan Rapat, Ide, & SOP Bisnis)
-CREATE TABLE IF NOT EXISTS public.notes (
+-- 6. Tabel Notes (Catatan, Ide, & SOP Bisnis)
+CREATE TABLE public.notes (
     id TEXT PRIMARY KEY,
     project_id TEXT REFERENCES public.projects(id) ON DELETE SET NULL,
-    goal_id TEXT REFERENCES public.goals(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     content TEXT,
     category TEXT NOT NULL DEFAULT 'Catatan Umum',
@@ -115,8 +98,8 @@ CREATE TABLE IF NOT EXISTS public.notes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. Tabel Routines (Rutinitas & Habit Harian / Mingguan Bisnis)
-CREATE TABLE IF NOT EXISTS public.routines (
+-- 7. Tabel Routines (Rutinitas Bisnis Harian, Rentang Tanggal, & Custom Hari)
+CREATE TABLE public.routines (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
@@ -132,47 +115,34 @@ CREATE TABLE IF NOT EXISTS public.routines (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Migrasi tambahan kolom jika tabel sudah ada sebelumnya:
-ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS start_day INTEGER;
-ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS end_day INTEGER;
-ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS custom_days JSONB DEFAULT '[]'::jsonb;
-
-
--- 8. Tabel Business Categories (Daftar Opsi Kategori Bisnis Dropdown)
-CREATE TABLE IF NOT EXISTS public.business_categories (
+-- 8. Tabel Business Categories (Daftar Kategori Bisnis - Bersih / Kosong)
+CREATE TABLE public.business_categories (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     color TEXT DEFAULT '#3b82f6',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Isi kategori bawaan default ke Supabase:
-INSERT INTO public.business_categories (id, name, color) VALUES
-    ('cat-1', 'Pendapatan (Revenue)', '#2563eb'),
-    ('cat-2', 'Pemasaran (Marketing)', '#7c3aed'),
-    ('cat-3', 'Produk (Product)', '#059669'),
-    ('cat-4', 'Operasional (Operations)', '#d97706'),
-    ('cat-5', 'Klien (Client & Sales)', '#0891b2'),
-    ('cat-6', 'Personal & Kepemimpinan', '#dc2626')
-ON CONFLICT (name) DO NOTHING;
+-- Data Awal Pengaturan Default (Tanpa kategori dummy bawaan sistem)
+INSERT INTO public.settings (id, user_name, business_name, currency, default_weekly_goal_hours, theme, has_completed_onboarding, goal_categories)
+VALUES ('user_default', 'Yunus Mahada', 'Personal Project', 'IDR', 40, 'dark', true, '[]'::jsonb)
+ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================
--- Indeks untuk Performa Query Cepat
+-- Indeks Performa Query Cepat
 -- ==============================================================================
-CREATE INDEX IF NOT EXISTS idx_projects_goal_id ON public.projects(goal_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON public.tasks(project_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_goal_id ON public.tasks(goal_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
-CREATE INDEX IF NOT EXISTS idx_calendar_events_task_id ON public.calendar_events(task_id);
-CREATE INDEX IF NOT EXISTS idx_notes_project_id ON public.notes(project_id);
-CREATE INDEX IF NOT EXISTS idx_business_categories_name ON public.business_categories(name);
+CREATE INDEX idx_tasks_project_id ON public.tasks(project_id);
+CREATE INDEX idx_tasks_status ON public.tasks(status);
+CREATE INDEX idx_tasks_due_date ON public.tasks(due_date);
+CREATE INDEX idx_calendar_events_task_id ON public.calendar_events(task_id);
+CREATE INDEX idx_calendar_events_project_id ON public.calendar_events(project_id);
+CREATE INDEX idx_notes_project_id ON public.notes(project_id);
+CREATE INDEX idx_business_categories_name ON public.business_categories(name);
 
 -- ==============================================================================
 -- Row Level Security (RLS) Setup
--- Mengaktifkan RLS untuk keamanan data dan memberikan izin akses publik/anon untuk aplikasi personal
 -- ==============================================================================
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calendar_events ENABLE ROW LEVEL SECURITY;
@@ -180,14 +150,10 @@ ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.business_categories ENABLE ROW LEVEL SECURITY;
 
--- Policy Akses Penuh untuk anon & authenticated users (Cocok untuk Personal Single-User App)
 DO $$
 BEGIN
     DROP POLICY IF EXISTS "Akses Penuh Settings" ON public.settings;
     CREATE POLICY "Akses Penuh Settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
-
-    DROP POLICY IF EXISTS "Akses Penuh Goals" ON public.goals;
-    CREATE POLICY "Akses Penuh Goals" ON public.goals FOR ALL USING (true) WITH CHECK (true);
 
     DROP POLICY IF EXISTS "Akses Penuh Projects" ON public.projects;
     CREATE POLICY "Akses Penuh Projects" ON public.projects FOR ALL USING (true) WITH CHECK (true);

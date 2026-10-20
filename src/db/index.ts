@@ -1,17 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 import { 
-  type Goal, 
   type Project, 
   type Task, 
   type CalendarEvent, 
   type Note, 
   type Routine, 
   type UserSettings,
-  DEFAULT_GOAL_CATEGORIES
+  DEFAULT_BUSINESS_CATEGORIES
 } from '../types';
 
 export class MahadaDatabase extends Dexie {
-  goals!: Table<Goal, string>;
   projects!: Table<Project, string>;
   tasks!: Table<Task, string>;
   calendarEvents!: Table<CalendarEvent, string>;
@@ -21,12 +19,11 @@ export class MahadaDatabase extends Dexie {
 
   constructor() {
     super('MahadaBusinessDB');
-    this.version(1).stores({
-      goals: 'id, category, status, priority, deadline, createdAt',
-      projects: 'id, goalId, status, priority, dueDate, createdAt',
-      tasks: 'id, projectId, goalId, category, status, priority, dueDate, scheduledDate, isCompleted, createdAt',
+    this.version(2).stores({
+      projects: 'id, status, priority, dueDate, createdAt',
+      tasks: 'id, projectId, category, status, priority, dueDate, scheduledDate, isCompleted, createdAt',
       calendarEvents: 'id, taskId, projectId, category, startTime, isCompleted, createdAt',
-      notes: 'id, projectId, goalId, category, isPinned, createdAt',
+      notes: 'id, projectId, category, isPinned, createdAt',
       routines: 'id, frequency, timeOfDay, createdAt',
       settings: 'id'
     });
@@ -36,7 +33,6 @@ export class MahadaDatabase extends Dexie {
 export const db = new MahadaDatabase();
 
 export async function clearAllBusinessData() {
-  await db.goals.clear();
   await db.projects.clear();
   await db.tasks.clear();
   await db.calendarEvents.clear();
@@ -55,25 +51,28 @@ export async function initializeDatabase() {
       if (!existing.businessName || existing.businessName === 'Mahada Indonesia' || existing.businessName.includes('Nexora')) {
         updates.businessName = 'Personal Project';
       }
-      if (!existing.goalCategories || existing.goalCategories.length === 0) {
-        updates.goalCategories = DEFAULT_GOAL_CATEGORIES;
+      if (!existing.goalCategories) {
+        updates.goalCategories = [];
       }
       if (Object.keys(updates).length > 0) {
         await db.settings.update('user_default', updates);
       }
 
-      // Auto-align any legacy/unmapped project categories to current business categories
+      // Auto-align legacy project categories only if user has active categories
       try {
         const allProjects = await db.projects.toArray();
-        const activeCategories = existing.goalCategories || DEFAULT_GOAL_CATEGORIES;
-        for (const p of allProjects) {
-          if (!activeCategories.includes(p.category)) {
-            const matched = activeCategories.find(c => 
-              p.title?.toLowerCase().includes(c.toLowerCase()) || 
-              p.category?.toLowerCase().includes(c.toLowerCase())
-            );
-            const newCat = matched || activeCategories[0] || 'Finance';
-            await db.projects.update(p.id, { category: newCat });
+        const activeCategories = existing.goalCategories || [];
+        if (activeCategories.length > 0) {
+          for (const p of allProjects) {
+            if (!activeCategories.includes(p.category)) {
+              const matched = activeCategories.find(c => 
+                p.title?.toLowerCase().includes(c.toLowerCase()) || 
+                p.category?.toLowerCase().includes(c.toLowerCase())
+              );
+              if (matched) {
+                await db.projects.update(p.id, { category: matched });
+              }
+            }
           }
         }
       } catch (catAlignErr) {
@@ -84,9 +83,8 @@ export async function initializeDatabase() {
 
   // Pastikan data dummy sisa dibersihkan jika masih ada
   try {
-    const hasDummyGoal = await db.goals.get('goal-1');
     const hasDummyProject = await db.projects.get('proj-1');
-    if (hasDummyGoal || hasDummyProject) {
+    if (hasDummyProject) {
       await clearAllBusinessData();
     }
   } catch (err) {
@@ -95,7 +93,7 @@ export async function initializeDatabase() {
 }
 
 export async function seedInitialData() {
-  // Hanya inisialisasi pengaturan dasar (Profil & Kategori Bisnis) tanpa data dummy bisnis
+  // Hanya inisialisasi pengaturan dasar (Profil) tanpa kategori bawaan
   const defaultSettings: UserSettings = {
     id: 'user_default',
     userName: 'Yunus Mahada',
@@ -104,7 +102,7 @@ export async function seedInitialData() {
     defaultWeeklyGoalHours: 40,
     theme: 'dark',
     hasCompletedOnboarding: true,
-    goalCategories: DEFAULT_GOAL_CATEGORIES
+    goalCategories: []
   };
   await db.settings.put(defaultSettings);
 }
@@ -112,75 +110,11 @@ export async function seedInitialData() {
 export async function seedSampleDemoData() {
   const now = new Date();
   const todayStr = '2026-10-16'; // Anchor date
-  const sampleGoals: Goal[] = [
-    {
-      id: 'goal-1',
-      title: 'Mencapai Omzet Rp 500 Juta di Q4 2026',
-      description: 'Meningkatkan pendapatan bisnis melalui penutupan kontrak enterprise dan ekspansi penjualan solusi SaaS.',
-      category: 'Pendapatan',
-      targetValue: 500,
-      currentValue: 345,
-      unit: 'Juta Rp',
-      deadline: '2026-12-31',
-      status: 'on_track',
-      priority: 'high',
-      color: '#2563eb',
-      createdAt: '2026-10-01T08:00:00Z',
-      updatedAt: '2026-10-15T14:30:00Z'
-    },
-    {
-      id: 'goal-2',
-      title: 'Peluncuran Platform SaaS V2 & 50 Klien B2B Aktif',
-      description: 'Menyelesaikan perombakan arsitektur, integrasi API perbankan, dan onboarding 50 perusahaan mitra.',
-      category: 'Produk',
-      targetValue: 50,
-      currentValue: 32,
-      unit: 'Klien',
-      deadline: '2026-11-30',
-      status: 'on_track',
-      priority: 'high',
-      color: '#059669',
-      createdAt: '2026-10-01T08:30:00Z',
-      updatedAt: '2026-10-14T10:00:00Z'
-    },
-    {
-      id: 'goal-3',
-      title: 'Optimalisasi Efisiensi Operasional & Pengurangan Biaya 15%',
-      description: 'Audit infrastruktur cloud, konsolidasi subscription vendor, dan otomatisasi alur kerja internal.',
-      category: 'Operasional',
-      targetValue: 15,
-      currentValue: 9.5,
-      unit: '% Biaya',
-      deadline: '2026-12-15',
-      status: 'on_track',
-      priority: 'medium',
-      color: '#d97706',
-      createdAt: '2026-10-02T09:00:00Z',
-      updatedAt: '2026-10-12T16:00:00Z'
-    },
-    {
-      id: 'goal-4',
-      title: 'Bangun Otoritas Bisnis & 10.000 Pembaca Newsletter',
-      description: 'Penerbitan studi kasus B2B industri berkala dan pendistribusian wawasan eksekutif.',
-      category: 'Pemasaran',
-      targetValue: 10000,
-      currentValue: 6850,
-      unit: 'Subscriber',
-      deadline: '2026-11-25',
-      status: 'at_risk',
-      priority: 'medium',
-      color: '#7c3aed',
-      createdAt: '2026-10-03T11:00:00Z',
-      updatedAt: '2026-10-15T11:20:00Z'
-    }
-  ];
-  await db.goals.bulkPut(sampleGoals);
 
-  // 3. Initial Projects
+  // 1. Initial Projects
   const sampleProjects: Project[] = [
     {
       id: 'proj-1',
-      goalId: 'goal-1',
       title: 'Kampanye Penjualan B2B Enterprise Q4',
       description: 'Pendekatan 30 akun korporat besar di sektor logistik dan manufaktur untuk lisensi tahunan.',
       status: 'in_progress',
@@ -194,7 +128,6 @@ export async function seedSampleDemoData() {
     },
     {
       id: 'proj-2',
-      goalId: 'goal-2',
       title: 'Pembaruan UI/UX Desain Dashboard Versi 2.0',
       description: 'Sistem desain modular baru dengan dukungan tema terang/gelap dan navigasi keyboard terpadu.',
       status: 'review',
@@ -208,7 +141,6 @@ export async function seedSampleDemoData() {
     },
     {
       id: 'proj-3',
-      goalId: 'goal-2',
       title: 'Integrasi Payment Gateway Otomatis & Faktur Pajak',
       description: 'Menghubungkan API Midtrans/Xendit untuk penagihan berulang otomatis dan e-faktur instan.',
       status: 'in_progress',
@@ -222,7 +154,6 @@ export async function seedSampleDemoData() {
     },
     {
       id: 'proj-4',
-      goalId: 'goal-3',
       title: 'Migrasi & Penataan Arsitektur Cloud Hemat Biaya',
       description: 'Right-sizing instans database, pemanfaatan caching edge CDN, dan penutupan node server cadangan.',
       status: 'in_progress',
@@ -236,7 +167,6 @@ export async function seedSampleDemoData() {
     },
     {
       id: 'proj-5',
-      goalId: 'goal-4',
       title: 'Penerbitan Whitepaper Industri & Seri Artikel Riset',
       description: 'Menulis riset mendalam mengenai adopsi AI pada efisiensi rantai pasok Indonesia 2027.',
       status: 'planning',
@@ -256,7 +186,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-1',
       projectId: 'proj-1',
-      goalId: 'goal-1',
       title: 'Finalisasi proposal kerja sama untuk PT Nusantara Logistik',
       description: 'Sesuaikan struktur diskon volume lisensi multi-cabang dan lampiran SLA 99.9%.',
       status: 'in_progress',
@@ -277,7 +206,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-2',
       projectId: 'proj-1',
-      goalId: 'goal-1',
       title: 'Meeting presentasi demo produk dengan Direktur Operasional',
       description: 'Jelaskan modul pelacakan armada otomatis dan penghematan biaya bulanan.',
       status: 'todo',
@@ -297,7 +225,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-3',
       projectId: 'proj-2',
-      goalId: 'goal-2',
       title: 'Audit accessibility dan kontras rasio warna UI komponen',
       description: 'Pastikan seluruh elemen memenuhi standar WCAG AA dengan kontras minimal 4.5:1.',
       status: 'in_review',
@@ -317,7 +244,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-4',
       projectId: 'proj-3',
-      goalId: 'goal-2',
       title: 'Uji coba webhook callback pelunasan faktur berulang',
       description: 'Simulasikan skenario kegagalan kartu kredit dan sistem notifikasi retry 3x.',
       status: 'in_progress',
@@ -334,7 +260,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-5',
       projectId: 'proj-4',
-      goalId: 'goal-3',
       title: 'Analisis laporan tagihan cloud provider bulan September',
       description: 'Identifikasi alokasi storage tak terpakai dan log retention yang berlebihan.',
       status: 'done',
@@ -352,7 +277,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-6',
       projectId: 'proj-5',
-      goalId: 'goal-4',
       title: 'Riset data tren adopsi AI di sektor logistik Indonesia',
       description: 'Kumpulkan sumber data resmi dari Asosiasi Logistik Indonesia dan BPS.',
       status: 'todo',
@@ -368,7 +292,6 @@ export async function seedSampleDemoData() {
     {
       id: 'task-7',
       projectId: 'proj-2',
-      goalId: 'goal-2',
       title: 'Export icon asset SVG dan panduan warna komponen ke Figma Tokens',
       description: 'Sinkronisasi token variabel warna dengan kode CSS sistem proyek.',
       status: 'done',
@@ -452,7 +375,6 @@ export async function seedSampleDemoData() {
     {
       id: 'note-1',
       projectId: 'proj-1',
-      goalId: 'goal-1',
       title: 'Strategi Negosiasi & Pricing Tier Akun Enterprise B2B',
       content: `## Kerangka Negosiasi Enterprise 2026
 1. **Nilai Inti yang Ditawarkan**:
@@ -598,9 +520,12 @@ export async function resetDatabaseToClean() {
   await clearAllBusinessData();
 }
 
+export async function resetCategoriesToClean() {
+  await db.settings.update('user_default', { goalCategories: [] });
+}
+
 export async function exportDatabaseBackup(): Promise<string> {
   const settings = await db.settings.toArray();
-  const goals = await db.goals.toArray();
   const projects = await db.projects.toArray();
   const tasks = await db.tasks.toArray();
   const calendarEvents = await db.calendarEvents.toArray();
@@ -609,10 +534,9 @@ export async function exportDatabaseBackup(): Promise<string> {
 
   const backupData = {
     exportedAt: new Date().toISOString(),
-    version: '1.0',
+    version: '2.0',
     data: {
       settings,
-      goals,
       projects,
       tasks,
       calendarEvents,
@@ -630,7 +554,6 @@ export async function importDatabaseBackup(jsonString: string): Promise<boolean>
     if (!parsed.data) return false;
 
     if (parsed.data.settings) await db.settings.bulkPut(parsed.data.settings);
-    if (parsed.data.goals) await db.goals.bulkPut(parsed.data.goals);
     if (parsed.data.projects) await db.projects.bulkPut(parsed.data.projects);
     if (parsed.data.tasks) await db.tasks.bulkPut(parsed.data.tasks);
     if (parsed.data.calendarEvents) await db.calendarEvents.bulkPut(parsed.data.calendarEvents);

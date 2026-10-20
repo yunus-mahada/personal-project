@@ -35,9 +35,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   const routines = useLiveQuery(() => db.routines.toArray()) ?? [];
   const notes = useLiveQuery(() => db.notes.toArray()) ?? [];
 
-  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+  const availableCategories = (settings?.goalCategories && Array.isArray(settings.goalCategories))
     ? settings.goalCategories
-    : DEFAULT_GOAL_CATEGORIES;
+    : [];
 
   // 1. Task Metrics (Menu: Daftar Tugas)
   const completedTasks = tasks.filter(t => t.isCompleted);

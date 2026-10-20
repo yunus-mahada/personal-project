@@ -18,9 +18,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   projectToEdit
 }) => {
   const settings = useLiveQuery(() => db.settings.get('user_default'));
-  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+  const availableCategories = (settings?.goalCategories && Array.isArray(settings.goalCategories))
     ? settings.goalCategories
-    : DEFAULT_GOAL_CATEGORIES;
+    : [];
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -154,17 +154,27 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </span>
               <span className="text-[10px] text-zinc-500">Kelola di menu Pengaturan</span>
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none cursor-pointer"
-            >
-              {availableCategories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            {availableCategories.length > 0 ? (
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none cursor-pointer"
+              >
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                placeholder="Ketik kategori proyek (atau tambah di Pengaturan)..."
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white focus:border-blue-500 focus:outline-none"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

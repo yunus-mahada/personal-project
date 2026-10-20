@@ -1,49 +1,14 @@
-export type DefaultGoalCategory = 
-  | 'Pendapatan (Revenue)' 
-  | 'Pemasaran (Marketing)' 
-  | 'Produk (Product)' 
-  | 'Operasional (Operations)' 
-  | 'Klien (Client & Sales)' 
-  | 'Personal & Kepemimpinan';
+export type BusinessCategory = string;
 
-export type GoalCategory = string;
+export const DEFAULT_BUSINESS_CATEGORIES: string[] = [];
 
-export const DEFAULT_GOAL_CATEGORIES: string[] = [
-  'Pendapatan (Revenue)', 
-  'Pemasaran (Marketing)', 
-  'Produk (Product)', 
-  'Operasional (Operations)', 
-  'Klien (Client & Sales)', 
-  'Personal & Kepemimpinan'
-];
-
-export const DEFAULT_BUSINESS_CATEGORIES = DEFAULT_GOAL_CATEGORIES;
-
-export type GoalStatus = 'on_track' | 'at_risk' | 'behind' | 'completed';
-export type GoalPriority = 'high' | 'medium' | 'low';
-
-export interface Goal {
-  id: string;
-  title: string;
-  description: string;
-  category: GoalCategory;
-  targetValue: number;
-  currentValue: number;
-  unit: string; // e.g. 'Rp', '%', 'Klien', 'Unit'
-  deadline: string; // YYYY-MM-DD
-  status: GoalStatus;
-  priority: GoalPriority;
-  color?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export const DEFAULT_GOAL_CATEGORIES = DEFAULT_BUSINESS_CATEGORIES;
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';
 export type ProjectPriority = 'urgent' | 'high' | 'medium' | 'low';
 
 export interface Project {
   id: string;
-  goalId?: string; // Foreign key to Goal
   title: string;
   description: string;
   status: ProjectStatus;
@@ -68,7 +33,6 @@ export const TASK_CATEGORIES: TaskCategory[] = ['Meeting', 'Evaluasi', 'Tugas'];
 export interface Task {
   id: string;
   projectId?: string; // Foreign key to Project
-  goalId?: string; // Inherited or explicit link
   title: string;
   description?: string;
   category?: TaskCategory;
@@ -112,7 +76,6 @@ export type NoteCategory = 'meeting_notes' | 'strategy' | 'sop' | 'idea' | 'brie
 export interface Note {
   id: string;
   projectId?: string;
-  goalId?: string;
   title: string;
   content: string;
   category: NoteCategory;

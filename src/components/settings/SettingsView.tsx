@@ -28,15 +28,16 @@ import {
   resetDatabaseToClean 
 } from '../../db';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
-import { DEFAULT_GOAL_CATEGORIES } from '../../types';
+import { DEFAULT_BUSINESS_CATEGORIES } from '../../types';
 import { 
   isSupabaseConfigured, 
   testSupabaseConnection, 
   syncLocalToSupabase, 
-  syncSupabaseToLocal,
+  syncSupabaseToLocal, 
   cloudUpsertSettings,
   cloudUpsertCategory,
-  cloudDeleteCategory
+  cloudDeleteCategory,
+  cloudResetCategories
 } from '../../lib/supabase';
 
 type SettingsTab = 'profile' | 'categories' | 'setup';
@@ -45,7 +46,6 @@ export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   const settings = useLiveQuery(() => db.settings.get('user_default'));
-  const goalsCount = useLiveQuery(() => db.goals.count()) ?? 0;
   const projectsCount = useLiveQuery(() => db.projects.count()) ?? 0;
   const tasksCount = useLiveQuery(() => db.tasks.count()) ?? 0;
   const eventsCount = useLiveQuery(() => db.calendarEvents.count()) ?? 0;
@@ -60,10 +60,11 @@ export const SettingsView: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   // Category Management States
-  const categories: string[] = settings?.goalCategories && settings.goalCategories.length > 0
+  const categories: string[] = settings?.goalCategories && Array.isArray(settings.goalCategories)
     ? settings.goalCategories
-    : DEFAULT_GOAL_CATEGORIES;
+    : [];
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showResetCatConfirm, setShowResetCatConfirm] = useState(false);
 
   // Supabase Cloud States
   const [supabaseLoading, setSupabaseLoading] = useState(false);
@@ -186,24 +187,24 @@ export const SettingsView: React.FC = () => {
     setTimeout(() => setNotice(null), 3500);
   };
 
-  // Reset Categories to Default
+  // Reset & Kosongkan Seluruh Kategori (Tanpa membawa kategori bawaan sistem)
   const handleResetCategories = async () => {
     const existing = await db.settings.get('user_default');
     const updatedSettings: any = {
       ...(existing || {}),
       id: 'user_default',
-      goalCategories: DEFAULT_GOAL_CATEGORIES
+      goalCategories: []
     };
     try {
-      await cloudUpsertSettings(updatedSettings);
-      for (const cat of DEFAULT_GOAL_CATEGORIES) {
-        await cloudUpsertCategory(cat);
-      }
+      await cloudResetCategories();
       await db.settings.put(updatedSettings);
-      setNotice({ text: 'Daftar kategori berhasil direset & disinkronkan ke Supabase Cloud.', type: 'success' });
+      setShowResetCatConfirm(false);
+      setNotice({ text: 'Tabel kategori berhasil direset & dikosongkan (tanpa kategori bawaan).', type: 'success' });
     } catch (err: any) {
       console.error('Gagal mereset kategori di Supabase:', err);
-      setNotice({ text: `Gagal menyimpan reset ke Supabase: ${err.message || 'Cek koneksi'}`, type: 'error' });
+      await db.settings.put(updatedSettings);
+      setShowResetCatConfirm(false);
+      setNotice({ text: `Kategori lokal dikosongkan. Catatan Supabase: ${err.message || 'Cek koneksi'}`, type: 'error' });
     }
     setTimeout(() => setNotice(null), 3500);
   };
@@ -501,67 +502,93 @@ export const SettingsView: React.FC = () => {
               <h3 className="text-xs font-semibold text-zinc-200">
                 Daftar Kategori Aktif ({categories.length})
               </h3>
-              <button
-                onClick={handleResetCategories}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition cursor-pointer"
-                title="Kembalikan daftar kategori ke standar bawaan sistem"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Reset ke Standar</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {categories.map((cat, idx) => {
-                const isConfirming = categoryToDelete === cat;
-
-                return (
-                  <div
-                    key={cat}
-                    className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/90 hover:border-zinc-700 transition"
+              {categories.length > 0 && (
+                !showResetCatConfirm ? (
+                  <button
+                    onClick={() => setShowResetCatConfirm(true)}
+                    className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 transition cursor-pointer"
+                    title="Kosongkan seluruh kategori bisnis di tabel database"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-semibold text-zinc-400 flex items-center justify-center shrink-0">
-                        {idx + 1}
-                      </span>
-                      <span className="text-xs font-medium text-zinc-200 truncate">
-                        {cat}
-                      </span>
-                    </div>
-
-                    {isConfirming ? (
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <button
-                          onClick={() => handleConfirmDeleteCategory(cat)}
-                          className="px-2 py-0.5 text-[10px] font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded transition cursor-pointer"
-                        >
-                          Hapus
-                        </button>
-                        <button
-                          onClick={() => setCategoryToDelete(null)}
-                          className="px-2 py-0.5 text-[10px] text-zinc-400 hover:text-white bg-zinc-800 rounded transition cursor-pointer"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setCategoryToDelete(cat)}
-                        className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer shrink-0 ml-2"
-                        title={`Hapus kategori "${cat}"`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <Trash2 className="w-3 h-3" />
+                    <span>Reset / Kosongkan Kategori</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-rose-300">Yakin kosongkan semua?</span>
+                    <button
+                      onClick={handleResetCategories}
+                      className="px-2 py-0.5 text-[10px] font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded transition cursor-pointer"
+                    >
+                      Ya, Reset
+                    </button>
+                    <button
+                      onClick={() => setShowResetCatConfirm(false)}
+                      className="px-2 py-0.5 text-[10px] text-zinc-400 hover:text-white bg-zinc-800 rounded transition cursor-pointer"
+                    >
+                      Batal
+                    </button>
                   </div>
-                );
-              })}
+                )
+              )}
             </div>
+
+            {categories.length === 0 ? (
+              <div className="p-6 text-center rounded-xl bg-zinc-950/40 border border-dashed border-zinc-800 text-zinc-500 text-xs">
+                Belum ada kategori bisnis. Silakan tambahkan kategori kustom Anda melalui formulir di atas.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {categories.map((cat, idx) => {
+                  const isConfirming = categoryToDelete === cat;
+
+                  return (
+                    <div
+                      key={cat}
+                      className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/90 hover:border-zinc-700 transition"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-semibold text-zinc-400 flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-medium text-zinc-200 truncate">
+                          {cat}
+                        </span>
+                      </div>
+
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <button
+                            onClick={() => handleConfirmDeleteCategory(cat)}
+                            className="px-2 py-0.5 text-[10px] font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded transition cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                          <button
+                            onClick={() => setCategoryToDelete(null)}
+                            className="px-2 py-0.5 text-[10px] text-zinc-400 hover:text-white bg-zinc-800 rounded transition cursor-pointer"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setCategoryToDelete(cat)}
+                          className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer shrink-0 ml-2"
+                          title={`Hapus kategori "${cat}"`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="p-3 rounded-xl bg-zinc-950/40 border border-zinc-800/60 flex items-start gap-2 text-[11px] text-zinc-400">
               <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
               <span>
-                Setiap kategori baru yang ditambahkan di sini akan langsung tersedia di menu dropdown saat membuat Sasaran Bisnis (Goal), dan ikut tersinkronkan ke Supabase Cloud saat melakukan Push Sync.
+                Setiap kategori baru yang ditambahkan di sini akan langsung tersedia di menu dropdown saat membuat Proyek & Tugas Bisnis, dan ikut tersinkronkan ke Supabase Cloud saat melakukan Push Sync.
               </span>
             </div>
           </div>
@@ -578,11 +605,7 @@ export const SettingsView: React.FC = () => {
               <span>Status Penyimpanan Lokal (IndexedDB)</span>
             </h2>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-center">
-                <span className="text-lg font-bold tabular-nums text-white">{goalsCount}</span>
-                <p className="text-[11px] text-zinc-400">Sasaran</p>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-center">
                 <span className="text-lg font-bold tabular-nums text-white">{projectsCount}</span>
                 <p className="text-[11px] text-zinc-400">Proyek</p>
@@ -611,7 +634,7 @@ export const SettingsView: React.FC = () => {
                 <div>
                   <h3 className="text-xs font-semibold text-zinc-200">Ekspor Cadangan (Backup JSON)</h3>
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    Unduh seluruh data sasaran, proyek, tugas, catatan, dan jadwal ke file JSON lokal di komputer atau ponsel Anda.
+                    Unduh seluruh data proyek, tugas, catatan, jadwal, dan rutinitas ke file JSON lokal di komputer atau ponsel Anda.
                   </p>
                 </div>
                 <button
@@ -769,7 +792,7 @@ export const SettingsView: React.FC = () => {
               ) : (
                 <div className="p-3.5 rounded-xl bg-rose-950/70 border border-rose-700 space-y-2.5 w-full">
                   <p className="text-xs text-rose-200 font-medium">
-                    ⚠️ <strong>Konfirmasi:</strong> Anda akan menghapus seluruh data Sasaran (Goals), Proyek, Tugas, Kalender, Catatan, dan Rutinitas. Profil & Kategori Bisnis Anda akan tetap disimpan. Lanjutkan?
+                    ⚠️ <strong>Konfirmasi:</strong> Anda akan menghapus seluruh data Proyek, Tugas, Kalender, Catatan, dan Rutinitas. Profil & Kategori Bisnis Anda akan tetap disimpan. Lanjutkan?
                   </p>
                   <div className="flex items-center gap-2">
                     <button

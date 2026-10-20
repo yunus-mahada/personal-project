@@ -55,9 +55,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const settings = useLiveQuery(() => db.settings.get('user_default'));
 
-  const availableCategories = (settings?.goalCategories && settings.goalCategories.length > 0)
+  const availableCategories = (settings?.goalCategories && Array.isArray(settings.goalCategories))
     ? settings.goalCategories
-    : DEFAULT_GOAL_CATEGORIES;
+    : [];
 
   React.useEffect(() => {
     if (initialSelectedId && projects.length > 0) {
