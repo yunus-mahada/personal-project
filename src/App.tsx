@@ -199,6 +199,7 @@ export default function App() {
             <CalendarView
               onOpenEventModal={handleOpenEventModal}
               onOpenTaskModal={handleOpenTaskModal}
+              onOpenRoutineModal={handleOpenRoutineModal}
             />
           )}
 

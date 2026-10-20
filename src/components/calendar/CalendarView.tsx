@@ -9,15 +9,16 @@ import {
   Edit3, 
   Trash2,
   CheckCircle2, 
-  Circle,
-  Users,
-  ClipboardCheck,
-  CheckSquare,
-  Sparkles,
-  Link as LinkIcon,
-  Filter,
-  Layers,
-  FolderKanban
+  Circle, 
+  Users, 
+  ClipboardCheck, 
+  CheckSquare, 
+  Sparkles, 
+  Link as LinkIcon, 
+  Filter, 
+  Layers, 
+  FolderKanban,
+  Repeat
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
@@ -31,36 +32,52 @@ import {
   endOfWeek, 
   eachDayOfInterval, 
   isSameMonth, 
-  isSameDay
+  isSameDay,
+  parseISO
 } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { db } from '../../db';
-import type { CalendarEvent, Task, TaskCategory } from '../../types';
-import { cloudUpsertCalendarEvent, cloudDeleteCalendarEvent, cloudUpsertTask, cloudDeleteTask } from '../../lib/supabase';
+import type { CalendarEvent, Task, Routine } from '../../types';
+import { 
+  cloudUpsertCalendarEvent, 
+  cloudDeleteCalendarEvent, 
+  cloudUpsertTask, 
+  cloudDeleteTask,
+  cloudUpsertRoutine,
+  cloudDeleteRoutine
+} from '../../lib/supabase';
 import { 
   formatTimeOnly, 
   CALENDAR_CATEGORY_LABELS,
   formatDateIndo 
 } from '../../utils/formatters';
+import { 
+  getRoutineStatus, 
+  toggleRoutineCompletion, 
+  isDayInMonthRange 
+} from '../../utils/routineUtils';
 
 interface CalendarViewProps {
   onOpenEventModal: (event?: CalendarEvent, defaultDate?: string, defaultTime?: string) => void;
   onOpenTaskModal?: (task?: Task, defaultProjectId?: string, defaultDate?: string) => void;
+  onOpenRoutineModal?: (routine?: Routine) => void;
 }
 
-// Representasi terpadu untuk event kalender & tugas tersinkron
+// Representasi terpadu untuk event kalender, tugas, & rutinitas bisnis
 export interface UnifiedCalendarItem {
   id: string;
-  sourceType: 'event' | 'task';
+  sourceType: 'event' | 'task' | 'routine';
   rawEvent?: CalendarEvent;
   rawTask?: Task;
+  rawRoutine?: Routine;
   title: string;
   description?: string;
   dateStr: string; // YYYY-MM-DD
   startTime?: string;
   endTime?: string;
-  category: 'meeting' | 'review' | 'deep_work' | 'client' | 'task' | 'other';
-  categoryLabel: 'Meeting' | 'Evaluasi' | 'Deep Work' | 'Klien' | 'Tugas' | 'Lainnya';
+  category: 'meeting' | 'review' | 'deep_work' | 'client' | 'task' | 'routine' | 'other';
+  categoryLabel: 'Meeting' | 'Evaluasi' | 'Deep Work' | 'Klien' | 'Tugas' | 'Rutinitas' | 'Lainnya';
+  routineFrequencyLabel?: string;
   isCompleted: boolean;
   color?: string;
   locationOrLink?: string;
@@ -71,16 +88,19 @@ export interface UnifiedCalendarItem {
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   onOpenEventModal,
-  onOpenTaskModal
+  onOpenTaskModal,
+  onOpenRoutineModal
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [includeTasks, setIncludeTasks] = useState<boolean>(true);
+  const [includeRoutines, setIncludeRoutines] = useState<boolean>(true);
 
   const events = useLiveQuery(() => db.calendarEvents.toArray()) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
+  const routines = useLiveQuery(() => db.routines.toArray()) ?? [];
 
   const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -99,7 +119,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const selectedDayStr = format(selectedDay, 'yyyy-MM-dd');
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-  // Gabungkan CalendarEvents dan Tasks menjadi satu Unified Feed
+  // Gabungkan CalendarEvents, Tasks, dan Routines menjadi satu Unified Feed
   const unifiedItems: UnifiedCalendarItem[] = [];
 
   // 1. Masukkan semua Calendar Events
@@ -190,12 +210,76 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     });
   }
 
-  // Filter items
+  // 3. Masukkan Rutinitas Bisnis (Sinkronisasi Kalender Terpadu dengan Warna Khas Teal #0d9488)
+  if (includeRoutines) {
+    routines.forEach(r => {
+      // Tentukan rentang waktu default berdasarkan waktu pelaksanaan rutinitas
+      let defaultStart = '08:00';
+      let defaultEnd = '08:30';
+      if (r.timeOfDay === 'afternoon') {
+        defaultStart = '13:30';
+        defaultEnd = '14:00';
+      } else if (r.timeOfDay === 'evening') {
+        defaultStart = '19:00';
+        defaultEnd = '19:30';
+      }
+
+      // Distribusikan rutinitas ke hari-hari kalender aktif
+      calendarDays.forEach(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        const dayOfMonth = day.getDate();
+        const dayOfWeek = day.getDay(); // 0 = Min, 1 = Sen, ...
+
+        let appliesToDay = false;
+        let freqLabel = 'Harian';
+
+        if (r.frequency === 'custom_range') {
+          const start = r.startDay ?? 1;
+          const end = r.endDay ?? start;
+          appliesToDay = isDayInMonthRange(dayOfMonth, start, end);
+          freqLabel = `Tgl ${start} - ${end}`;
+        } else if (r.frequency === 'workdays') {
+          appliesToDay = dayOfWeek >= 1 && dayOfWeek <= 5;
+          freqLabel = 'Hari Kerja';
+        } else if (r.frequency === 'weekly') {
+          appliesToDay = dayOfWeek === 1; // Ditampilkan di hari Senin sebagai penanda target mingguan
+          freqLabel = 'Mingguan';
+        } else {
+          // daily
+          appliesToDay = true;
+          freqLabel = 'Harian';
+        }
+
+        if (appliesToDay) {
+          const status = getRoutineStatus(r, day);
+          unifiedItems.push({
+            id: `routine-sync-${r.id}-${dayStr}`,
+            sourceType: 'routine',
+            rawRoutine: r,
+            title: r.title,
+            description: r.description,
+            dateStr: dayStr,
+            startTime: defaultStart,
+            endTime: defaultEnd,
+            category: 'routine',
+            categoryLabel: 'Rutinitas',
+            routineFrequencyLabel: freqLabel,
+            isCompleted: status.isCompleted,
+            color: '#0d9488', // Warna Khas Rutinitas: Teal
+            priority: 'routine'
+          });
+        }
+      });
+    });
+  }
+
+  // Filter items berdasarkan kategori terpilih
   const filteredItems = unifiedItems.filter(item => {
     if (filterCategory === 'meeting' && item.category !== 'meeting') return false;
     if (filterCategory === 'review' && item.category !== 'review') return false;
     if (filterCategory === 'deep_work' && item.category !== 'deep_work') return false;
     if (filterCategory === 'task' && item.category !== 'task') return false;
+    if (filterCategory === 'routine' && item.category !== 'routine') return false;
     return true;
   });
 
@@ -203,11 +287,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const selectedDayItems = filteredItems
     .filter(i => i.dateStr === selectedDayStr)
     .sort((a, b) => {
-      // Prioritaskan Meeting & Evaluasi, lalu waktu
+      // Prioritaskan Meeting & Evaluasi, lalu Rutinitas, lalu Tugas & Waktu
       if (a.category === 'meeting' && b.category !== 'meeting') return -1;
       if (b.category === 'meeting' && a.category !== 'meeting') return 1;
       if (a.category === 'review' && b.category !== 'review') return -1;
       if (b.category === 'review' && a.category !== 'review') return 1;
+      if (a.category === 'routine' && b.category !== 'routine') return -1;
+      if (b.category === 'routine' && a.category !== 'routine') return 1;
       if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
       if (a.startTime && !b.startTime) return -1;
       if (!a.startTime && b.startTime) return 1;
@@ -219,10 +305,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const monthItems = unifiedItems.filter(i => i.dateStr.startsWith(currentMonthPrefix));
   const meetingMonthCount = monthItems.filter(i => i.category === 'meeting').length;
   const reviewMonthCount = monthItems.filter(i => i.category === 'review').length;
+  const routineMonthCount = monthItems.filter(i => i.category === 'routine').length;
   const completedMonthCount = monthItems.filter(i => i.isCompleted).length;
   const totalMonthCount = monthItems.length;
 
-  // Toggle Selesai untuk Item (Event atau Task)
+  // Toggle Selesai untuk Item (Event, Task, atau Rutinitas)
   const handleToggleItem = async (item: UnifiedCalendarItem) => {
     const nextCompleted = !item.isCompleted;
     const nowIso = new Date().toISOString();
@@ -245,6 +332,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       };
       await db.calendarEvents.put(updatedEvent);
       cloudUpsertCalendarEvent(updatedEvent).catch(console.error);
+    } else if (item.sourceType === 'routine' && item.rawRoutine) {
+      const targetDate = parseISO(item.dateStr);
+      const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(item.rawRoutine, targetDate);
+      await db.routines.put(updatedRoutine);
+      cloudUpsertRoutine(updatedRoutine).catch(console.error);
+
+      if (isNowCompleted) {
+        confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+      }
+      return;
     }
 
     if (nextCompleted) {
@@ -264,6 +361,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         await db.calendarEvents.delete(item.rawEvent.id);
         cloudDeleteCalendarEvent(item.rawEvent.id).catch(console.error);
       }
+    } else if (item.sourceType === 'routine' && item.rawRoutine) {
+      if (window.confirm(`Hapus rutinitas "${item.title}"?`)) {
+        await db.routines.delete(item.rawRoutine.id);
+        cloudDeleteRoutine(item.rawRoutine.id).catch(console.error);
+      }
     }
   };
 
@@ -278,7 +380,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <span>Kalender Bisnis & Time Blocking</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Jadwal operasional terintegrasi dengan penanda khusus untuk agenda <span className="text-purple-400 font-semibold">Meeting</span> &amp; sesi <span className="text-amber-400 font-semibold">Evaluasi</span>.
+            Jadwal operasional terintegrasi dengan penanda agenda <span className="text-purple-400 font-semibold">Meeting</span>, sesi <span className="text-amber-400 font-semibold">Evaluasi</span>, dan <span className="text-teal-400 font-semibold">Rutinitas Bisnis</span>.
           </p>
         </div>
 
@@ -305,7 +407,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       {/* Mini Executive Metric Cards Bulan Ini */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
             <CalendarIcon className="w-4 h-4 text-blue-400" />
@@ -316,32 +418,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Meeting Stat Card with Special Accent */}
+        {/* Meeting Stat Card */}
         <div className="p-3.5 rounded-xl bg-gradient-to-br from-purple-950/40 to-zinc-900/90 border border-purple-800/40 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-purple-900/60 border border-purple-700/60 flex items-center justify-center shrink-0">
             <Users className="w-4 h-4 text-purple-300" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-purple-300 uppercase tracking-wider flex items-center gap-1">
-              <span>Rapat / Meeting</span>
-            </p>
+            <p className="text-[10px] font-semibold text-purple-300 uppercase tracking-wider">Rapat / Meeting</p>
             <p className="text-base font-bold text-purple-200 tabular-nums mt-0.5">{meetingMonthCount}</p>
           </div>
         </div>
 
-        {/* Evaluasi Stat Card with Special Accent */}
+        {/* Evaluasi Stat Card */}
         <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-950/40 to-zinc-900/90 border border-amber-800/40 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-amber-900/60 border border-amber-700/60 flex items-center justify-center shrink-0">
             <ClipboardCheck className="w-4 h-4 text-amber-300" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1">
-              <span>Sesi Evaluasi</span>
-            </p>
+            <p className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">Evaluasi</p>
             <p className="text-base font-bold text-amber-200 tabular-nums mt-0.5">{reviewMonthCount}</p>
           </div>
         </div>
 
+        {/* Rutinitas Stat Card dengan Warna Khas Teal */}
+        <div className="p-3.5 rounded-xl bg-gradient-to-br from-teal-950/40 to-zinc-900/90 border border-teal-800/40 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-teal-900/60 border border-teal-700/60 flex items-center justify-center shrink-0">
+            <Repeat className="w-4 h-4 text-teal-300" />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-teal-300 uppercase tracking-wider">Rutinitas</p>
+            <p className="text-base font-bold text-teal-200 tabular-nums mt-0.5">{routineMonthCount}</p>
+          </div>
+        </div>
+
+        {/* Completed Stat Card */}
         <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -383,7 +493,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Category Filters & Task Sync Toggle */}
+        {/* Category Filters & Synchronizations */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Quick Filter Buttons */}
           <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 overflow-x-auto">
@@ -420,6 +530,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <span>Evaluasi ({reviewMonthCount})</span>
             </button>
             <button
+              onClick={() => setFilterCategory('routine')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition whitespace-nowrap flex items-center gap-1 cursor-pointer ${
+                filterCategory === 'routine'
+                  ? 'bg-teal-600 text-white font-bold shadow-xs'
+                  : 'text-teal-300 hover:bg-teal-950/60'
+              }`}
+            >
+              <Repeat className="w-3 h-3" />
+              <span>Rutinitas ({routineMonthCount})</span>
+            </button>
+            <button
               onClick={() => setFilterCategory('deep_work')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition whitespace-nowrap cursor-pointer ${
                 filterCategory === 'deep_work'
@@ -433,11 +554,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onClick={() => setFilterCategory('task')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition whitespace-nowrap cursor-pointer ${
                 filterCategory === 'task'
-                  ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                  ? 'bg-blue-700 text-white font-semibold shadow-xs'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Tugas Terjadwal
+              Tugas
             </button>
           </div>
 
@@ -452,7 +573,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             title="Tampilkan tugas operasional yang memiliki tanggal di kalender"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Sinkron Tugas {includeTasks ? 'Aktif' : 'Nonaktif'}</span>
+            <span>Tugas {includeTasks ? 'Aktif' : 'Nonaktif'}</span>
+          </button>
+
+          {/* Toggle Sinkronisasi Rutinitas Bisnis (Warna Khas Teal) */}
+          <button
+            onClick={() => setIncludeRoutines(!includeRoutines)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition cursor-pointer ${
+              includeRoutines
+                ? 'bg-teal-950/70 border-teal-700/80 text-teal-300 shadow-xs'
+                : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+            }`}
+            title="Tampilkan rutinitas bisnis & kebiasaan tanggal di kalender"
+          >
+            <Repeat className="w-3.5 h-3.5" />
+            <span>Rutinitas {includeRoutines ? 'Aktif' : 'Nonaktif'}</span>
           </button>
         </div>
       </div>
@@ -479,9 +614,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const dayItems = filteredItems.filter(e => e.dateStr === dayStr);
               const isTodayDate = dayStr === todayStr;
 
-              // Deteksi apakah tanggal ini memiliki Meeting atau Evaluasi (untuk penanda khusus)
+              // Deteksi kategori agenda khusus
               const hasMeeting = dayItems.some(i => i.category === 'meeting');
               const hasReview = dayItems.some(i => i.category === 'review');
+              const hasRoutine = dayItems.some(i => i.category === 'routine');
 
               return (
                 <div
@@ -507,7 +643,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       {format(day, 'd')}
                     </span>
 
-                    {/* Tanda khusus Meeting & Evaluasi di header tanggal */}
+                    {/* Tanda khusus Meeting, Evaluasi, & Rutinitas di header tanggal */}
                     <div className="flex items-center gap-1">
                       {hasMeeting && (
                         <span 
@@ -521,6 +657,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           title="Ada sesi Evaluasi" 
                         />
                       )}
+                      {hasRoutine && (
+                        <span 
+                          className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.9)]" 
+                          title="Ada Rutinitas Bisnis" 
+                        />
+                      )}
                       {dayItems.length > 0 && (
                         <span className="text-[10px] font-medium text-zinc-400 tabular-nums ml-0.5">
                           {dayItems.length}
@@ -529,17 +671,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Day Items Pills dengan Tanda Khusus Meeting & Evaluasi */}
+                  {/* Day Items Pills dengan Penanda Khusus */}
                   <div className="space-y-1 mt-1.5 overflow-hidden">
                     {dayItems.slice(0, 3).map((item) => {
                       const isMeeting = item.category === 'meeting';
                       const isReview = item.category === 'review';
+                      const isRoutine = item.category === 'routine';
 
                       let badgeStyle = 'bg-zinc-800/90 text-zinc-200 border-zinc-700';
                       if (isMeeting) {
                         badgeStyle = 'bg-purple-950/90 text-purple-200 border-purple-800/80 border-l-3 border-l-purple-400 font-semibold ring-1 ring-purple-600/30';
                       } else if (isReview) {
                         badgeStyle = 'bg-amber-950/90 text-amber-200 border-amber-800/80 border-l-3 border-l-amber-400 font-semibold ring-1 ring-amber-600/30';
+                      } else if (isRoutine) {
+                        badgeStyle = 'bg-teal-950/90 text-teal-200 border-teal-800/80 border-l-3 border-l-teal-400 font-semibold ring-1 ring-teal-600/30';
                       } else if (item.sourceType === 'task') {
                         badgeStyle = 'bg-blue-950/80 text-blue-200 border-blue-900 border-l-2 border-l-blue-400';
                       }
@@ -550,23 +695,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           className={`text-[10px] px-1.5 py-0.5 rounded border truncate transition shadow-2xs flex items-center gap-1 ${badgeStyle} ${
                             item.isCompleted ? 'line-through opacity-50' : ''
                           }`}
-                          title={`${item.startTime ? item.startTime + ' - ' : ''}${isMeeting ? '[MEETING] ' : isReview ? '[EVALUASI] ' : ''}${item.title}`}
+                          title={`${item.startTime ? item.startTime + ' - ' : ''}${isMeeting ? '[MEETING] ' : isReview ? '[EVALUASI] ' : isRoutine ? '[RUTINITAS] ' : ''}${item.title}`}
                         >
                           {isMeeting && <Users className="w-2.5 h-2.5 text-purple-400 shrink-0" />}
                           {isReview && <ClipboardCheck className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
-                          {!isMeeting && !isReview && item.sourceType === 'task' && (
+                          {isRoutine && <Repeat className="w-2.5 h-2.5 text-teal-400 shrink-0" />}
+                          {!isMeeting && !isReview && !isRoutine && item.sourceType === 'task' && (
                             <CheckSquare className="w-2.5 h-2.5 text-blue-400 shrink-0" />
                           )}
                           <span className="truncate">
-                            {item.startTime ? `${item.startTime} ` : ''}{item.title}
+                            {item.title}
                           </span>
                         </div>
                       );
                     })}
 
                     {dayItems.length > 3 && (
-                      <span className="text-[9px] text-zinc-400 font-medium pl-0.5 block">
-                        +{dayItems.length - 3} agenda lagi
+                      <span className="text-[9px] text-zinc-500 font-medium block text-right pr-1">
+                        +{dayItems.length - 3} lainnya
                       </span>
                     )}
                   </div>
@@ -586,6 +732,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800 text-amber-300 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.9)]" />
                 <span>📊 Sesi Evaluasi &amp; Review</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-teal-950/60 border border-teal-800 text-teal-300 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(20,184,166,0.9)]" />
+                <span>🔁 Rutinitas Bisnis</span>
               </span>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-950/60 border border-blue-800 text-blue-300">
                 <span className="w-2 h-2 rounded-full bg-blue-400" />
@@ -635,8 +785,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {selectedDayItems.length === 0 ? (
               <div className="py-12 text-center text-xs text-zinc-500">
                 <CalendarIcon className="w-8 h-8 mx-auto mb-2 text-zinc-600" />
-                <p className="font-medium text-zinc-400">Tidak ada agenda atau tugas di tanggal ini.</p>
-                <p className="text-[11px] text-zinc-500 mt-0.5">Semua rencana Anda akan tersinkronisasi otomatis di sini.</p>
+                <p className="font-medium text-zinc-400">Tidak ada agenda, tugas, atau rutinitas di tanggal ini.</p>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Semua agenda operasional Anda akan tersinkronisasi otomatis di sini.</p>
                 
                 <div className="flex items-center justify-center gap-2 mt-4">
                   <button
@@ -659,14 +809,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               selectedDayItems.map((item) => {
                 const isMeeting = item.category === 'meeting';
                 const isReview = item.category === 'review';
+                const isRoutine = item.category === 'routine';
                 const isSyncedTask = item.sourceType === 'task';
 
-                // Kartu Khusus untuk Meeting / Evaluasi / Tugas
+                // Kartu Khusus untuk Meeting / Evaluasi / Rutinitas / Tugas
                 let cardBorder = 'border-zinc-800 hover:border-zinc-700 bg-zinc-950/60';
                 if (isMeeting) {
                   cardBorder = 'border-l-4 border-l-purple-500 border-purple-800/40 bg-gradient-to-r from-purple-950/40 via-zinc-950/80 to-zinc-950 shadow-sm';
                 } else if (isReview) {
                   cardBorder = 'border-l-4 border-l-amber-500 border-amber-800/40 bg-gradient-to-r from-amber-950/40 via-zinc-950/80 to-zinc-950 shadow-sm';
+                } else if (isRoutine) {
+                  cardBorder = 'border-l-4 border-l-teal-500 border-teal-800/40 bg-gradient-to-r from-teal-950/40 via-zinc-950/80 to-zinc-950 shadow-sm';
                 } else if (isSyncedTask) {
                   cardBorder = 'border-l-4 border-l-blue-500 border-zinc-800 bg-zinc-950/60';
                 }
@@ -678,7 +831,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   >
                     {/* Header Penanda Kategori Menonjol */}
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {isMeeting ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-900/60 border border-purple-600/60 text-purple-200 text-[10px] font-bold tracking-wider uppercase shadow-xs">
                             <Users className="w-3 h-3 text-purple-300" />
@@ -689,6 +842,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             <ClipboardCheck className="w-3 h-3 text-amber-300" />
                             <span>Sesi Evaluasi &amp; Review</span>
                           </span>
+                        ) : isRoutine ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-teal-900/60 border border-teal-600/60 text-teal-200 text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                            <Repeat className="w-3 h-3 text-teal-300" />
+                            <span>Rutinitas Bisnis {item.routineFrequencyLabel ? `· ${item.routineFrequencyLabel}` : ''}</span>
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] font-semibold">
                             {isSyncedTask ? <CheckSquare className="w-3 h-3 text-blue-400" /> : <Clock className="w-3 h-3 text-zinc-400" />}
@@ -696,10 +854,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           </span>
                         )}
 
-                        {/* Indikator Asal Sumber (Tugas Tersinkron) */}
+                        {/* Indikator Asal Sumber */}
                         {isSyncedTask && (
                           <span className="text-[9px] font-medium text-blue-400 bg-blue-950 border border-blue-900/80 px-1.5 py-0.2 rounded">
                             Tugas Tersinkron
+                          </span>
+                        )}
+                        {isRoutine && (
+                          <span className="text-[9px] font-medium text-teal-400 bg-teal-950 border border-teal-900/80 px-1.5 py-0.2 rounded">
+                            Rutinitas Tersinkron
                           </span>
                         )}
                       </div>
@@ -710,16 +873,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       </span>
                     </div>
 
-                    {/* Konten Utama: Checkbox + Judul + Proyek */}
+                    {/* Konten Utama: Checkbox + Judul + Deskripsi */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5 min-w-0 flex-1">
                         <button
                           onClick={() => handleToggleItem(item)}
-                          className="mt-0.5 text-zinc-500 hover:text-emerald-400 transition shrink-0 cursor-pointer"
+                          className={`mt-0.5 transition shrink-0 cursor-pointer ${
+                            isRoutine 
+                              ? 'text-zinc-500 hover:text-teal-400' 
+                              : 'text-zinc-500 hover:text-emerald-400'
+                          }`}
                           title={item.isCompleted ? 'Tandai belum selesai' : 'Tandai selesai'}
                         >
                           {item.isCompleted ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <CheckCircle2 className={`w-4 h-4 ${isRoutine ? 'text-teal-400' : 'text-emerald-400'}`} />
                           ) : (
                             <Circle className="w-4 h-4" />
                           )}
@@ -771,6 +938,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           onClick={() => {
                             if (item.sourceType === 'task' && item.rawTask && onOpenTaskModal) {
                               onOpenTaskModal(item.rawTask);
+                            } else if (item.sourceType === 'routine' && item.rawRoutine && onOpenRoutineModal) {
+                              onOpenRoutineModal(item.rawRoutine);
                             } else if (item.rawEvent) {
                               onOpenEventModal(item.rawEvent);
                             }

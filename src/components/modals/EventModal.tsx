@@ -136,6 +136,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                 else if (nextCat === 'review') setColor('#d97706');
                 else if (nextCat === 'deep_work') setColor('#2563eb');
                 else if (nextCat === 'client') setColor('#059669');
+                else if (nextCat === 'routine') setColor('#0d9488');
               }}
               className="w-full px-2.5 py-2 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-white cursor-pointer"
             >

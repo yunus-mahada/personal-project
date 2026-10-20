@@ -101,7 +101,7 @@ export const CALENDAR_CATEGORY_LABELS: Record<string, { label: string; color: st
   client: { label: 'Pertemuan Klien', color: '#059669' },
   milestone: { label: 'Milestone Bisnis', color: '#d97706' },
   review: { label: 'Evaluasi & Tinjauan', color: '#0284c7' },
-  routine: { label: 'Rutinitas Bisnis', color: '#4b5563' }
+  routine: { label: 'Rutinitas Bisnis', color: '#0d9488' }
 };
 
 export const EISENHOWER_LABELS: Record<string, { label: string; desc: string; color: string }> = {
