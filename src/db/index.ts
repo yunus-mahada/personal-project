@@ -557,6 +557,20 @@ export async function seedSampleDemoData() {
       completedDates: ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15'],
       streak: 4,
       createdAt: '2026-10-01T17:00:00Z'
+    },
+    {
+      id: 'rtn-5',
+      title: 'Pembayaran & Setor Pajak Bulanan (PPh / PPN)',
+      description: 'Menyelesaikan pembayaran setoran pajak dan verifikasi bukti penerimaan negara (BPN) sebelum tanggal 10.',
+      frequency: 'custom_range',
+      timeOfDay: 'afternoon',
+      category: 'Keuangan',
+      targetDaysPerWeek: 1,
+      startDay: 7,
+      endDay: 10,
+      completedDates: ['2026-10-08'],
+      streak: 3,
+      createdAt: '2026-10-01T09:00:00Z'
     }
   ];
   await db.routines.bulkPut(sampleRoutines);

@@ -28,6 +28,8 @@ import {
   PROJECT_STATUS_LABELS,
   CALENDAR_CATEGORY_LABELS
 } from '../../utils/formatters';
+import { getRoutineStatus, toggleRoutineCompletion } from '../../utils/routineUtils';
+import { cloudUpsertRoutine } from '../../lib/supabase';
 
 interface DashboardViewProps {
   onNavigate: (tab: ActiveTab, itemId?: string) => void;
@@ -83,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Executive Productivity Score (0-100) based on task velocity & active routines
   const taskCompletionRate = tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
-  const completedRoutinesToday = routines.filter(r => r.completedDates.includes(todayStr)).length;
+  const completedRoutinesToday = routines.filter(r => getRoutineStatus(r, now).isCompleted).length;
   const routineCompletionRate = routines.length > 0 ? (completedRoutinesToday / routines.length) * 100 : 0;
   
   const productivityScore = (tasks.length === 0 && routines.length === 0)
@@ -140,25 +142,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setQuickTaskTitle('');
   };
 
-  // Toggle routine for today
+  // Toggle routine for today / current cycle
   const handleToggleRoutine = async (routine: Routine) => {
-    const isCompletedToday = routine.completedDates.includes(todayStr);
-    let nextDates = [...routine.completedDates];
-    let nextStreak = routine.streak;
-
-    if (isCompletedToday) {
-      nextDates = nextDates.filter(d => d !== todayStr);
-      nextStreak = Math.max(0, nextStreak - 1);
-    } else {
-      nextDates.push(todayStr);
-      nextStreak += 1;
+    const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(routine, now);
+    if (isNowCompleted) {
       confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
     }
-
-    await db.routines.update(routine.id, {
-      completedDates: nextDates,
-      streak: nextStreak
-    });
+    await db.routines.put(updatedRoutine);
+    cloudUpsertRoutine(updatedRoutine).catch(console.error);
   };
 
   return (
@@ -725,7 +716,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             ) : (
               <div className="divide-y divide-zinc-800/70">
                 {routines.map((routine) => {
-                  const isDone = routine.completedDates.includes(todayStr);
+                  const status = getRoutineStatus(routine, now);
+                  const isDone = status.isCompleted;
+                  const isCustom = routine.frequency === 'custom_range';
 
                   return (
                     <div 
@@ -745,15 +738,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           )}
                         </button>
                         <div className="min-w-0">
-                          <p className={`text-xs font-medium text-zinc-100 ${isDone ? 'line-through text-zinc-500' : ''}`}>
-                            {routine.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-zinc-400">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className={`text-xs font-medium text-zinc-100 ${isDone ? 'line-through text-zinc-500' : ''}`}>
+                              {routine.title}
+                            </p>
+                            {isCustom && (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border ${
+                                isDone 
+                                  ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40' 
+                                  : status.isInsideWindow
+                                  ? 'bg-blue-950/70 text-blue-300 border-blue-700/60 animate-pulse'
+                                  : 'bg-zinc-800 text-zinc-400 border-zinc-700/60'
+                              }`}>
+                                Tgl {routine.startDay} - {routine.endDay}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-zinc-400">
                             <span className="text-[10px] text-zinc-400">{routine.category}</span>
+                            <span aria-hidden="true">·</span>
+                            {isCustom ? (
+                              <span className="text-[10px]">
+                                {isDone ? (
+                                  <span className="text-emerald-400 font-medium">Selesai ({status.completedDateFormatted})</span>
+                                ) : status.isInsideWindow ? (
+                                  <span className="text-amber-400 font-medium">⚡ Aktif sekarang</span>
+                                ) : (
+                                  <span className="text-zinc-400">Tiap tgl {routine.startDay} - {routine.endDay}</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400">{status.badgeText}</span>
+                            )}
                             <span aria-hidden="true">·</span>
                             <span className="flex items-center gap-0.5 text-amber-400 font-medium text-[10px]">
                               <Flame className="w-3 h-3 text-amber-400" />
-                              <span className="tabular-nums">{routine.streak} hari streak</span>
+                              <span className="tabular-nums">{routine.streak} siklus</span>
                             </span>
                           </div>
                         </div>

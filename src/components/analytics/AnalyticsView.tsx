@@ -21,6 +21,7 @@ import { id } from 'date-fns/locale';
 import { db } from '../../db';
 import type { ActiveTab } from '../../types';
 import { DEFAULT_GOAL_CATEGORIES } from '../../types';
+import { getRoutineStatus } from '../../utils/routineUtils';
 
 interface AnalyticsViewProps {
   onNavigate?: (tab: ActiveTab, itemId?: string) => void;
@@ -92,7 +93,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   const otherPct = Math.max(0, 100 - (deepWorkPct + clientPct + meetingPct));
 
   // 5. Routine Discipline & Consistency Metrics (Menu: Rutinitas Bisnis)
-  const completedRoutinesToday = routines.filter(r => r.completedDates?.includes(todayStr)).length;
+  const completedRoutinesToday = routines.filter(r => getRoutineStatus(r, now).isCompleted).length;
   const routineCompletionRate = routines.length > 0 ? Math.round((completedRoutinesToday / routines.length) * 100) : 0;
   const maxStreak = routines.reduce((acc, r) => Math.max(acc, r.streak || 0), 0);
 

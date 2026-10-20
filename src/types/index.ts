@@ -122,7 +122,7 @@ export interface Note {
   updatedAt: string;
 }
 
-export type RoutineFrequency = 'daily' | 'workdays' | 'weekly';
+export type RoutineFrequency = 'daily' | 'workdays' | 'weekly' | 'custom_range';
 export type RoutineTimeOfDay = 'morning' | 'afternoon' | 'evening';
 
 export interface Routine {
@@ -133,6 +133,8 @@ export interface Routine {
   timeOfDay: RoutineTimeOfDay;
   category: string;
   targetDaysPerWeek: number;
+  startDay?: number; // Hari awal untuk rentang tanggal bulanan (1-31, contoh: 7)
+  endDay?: number;   // Hari akhir untuk rentang tanggal bulanan (1-31, contoh: 10)
   completedDates: string[]; // ['2026-10-14', '2026-10-15', ...]
   streak: number;
   createdAt: string;

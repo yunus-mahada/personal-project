@@ -124,10 +124,17 @@ CREATE TABLE IF NOT EXISTS public.routines (
     time_of_day TEXT DEFAULT 'morning',
     category TEXT DEFAULT 'Personal',
     target_days_per_week INTEGER DEFAULT 7,
+    start_day INTEGER,
+    end_day INTEGER,
     completed_dates JSONB DEFAULT '[]'::jsonb,
     streak INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migrasi tambahan kolom jika tabel sudah ada sebelumnya:
+ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS start_day INTEGER;
+ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS end_day INTEGER;
+
 
 -- 8. Tabel Business Categories (Daftar Opsi Kategori Bisnis Dropdown)
 CREATE TABLE IF NOT EXISTS public.business_categories (
