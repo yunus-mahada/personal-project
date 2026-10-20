@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS public.routines (
     target_days_per_week INTEGER DEFAULT 7,
     start_day INTEGER,
     end_day INTEGER,
+    custom_days JSONB DEFAULT '[]'::jsonb,
     completed_dates JSONB DEFAULT '[]'::jsonb,
     streak INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -134,6 +135,7 @@ CREATE TABLE IF NOT EXISTS public.routines (
 -- Migrasi tambahan kolom jika tabel sudah ada sebelumnya:
 ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS start_day INTEGER;
 ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS end_day INTEGER;
+ALTER TABLE public.routines ADD COLUMN IF NOT EXISTS custom_days JSONB DEFAULT '[]'::jsonb;
 
 
 -- 8. Tabel Business Categories (Daftar Opsi Kategori Bisnis Dropdown)

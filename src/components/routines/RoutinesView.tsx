@@ -29,7 +29,8 @@ import { cloudUpsertRoutine, cloudDeleteRoutine } from '../../lib/supabase';
 import { 
   getRoutineStatus, 
   toggleRoutineCompletion, 
-  isDayInMonthRange 
+  isDayInMonthRange,
+  formatCustomDaysLabel 
 } from '../../utils/routineUtils';
 
 interface RoutinesViewProps {
@@ -128,15 +129,21 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
               <div className="divide-y divide-zinc-800">
                 {sectionRoutines.map((routine) => {
                   const status = getRoutineStatus(routine, now);
-                  const isCustom = routine.frequency === 'custom_range';
+                  const isCustomRange = routine.frequency === 'custom_range';
+                  const isCustomDays = routine.frequency === 'custom_days';
                   const startDay = routine.startDay ?? 1;
                   const endDay = routine.endDay ?? startDay;
+                  const targetDays = isCustomRange 
+                    ? 1 
+                    : isCustomDays 
+                    ? (routine.customDays?.length || 1) 
+                    : routine.targetDaysPerWeek;
 
                   // Progress calculation
                   const thisWeekCompletedCount = currentWeekDays.filter(d => routine.completedDates.includes(d.dayStr)).length;
-                  const progressPercent = isCustom 
+                  const progressPercent = isCustomRange 
                     ? (status.isCompleted ? 100 : 0)
-                    : Math.min(100, Math.round((thisWeekCompletedCount / routine.targetDaysPerWeek) * 100));
+                    : Math.min(100, Math.round((thisWeekCompletedCount / targetDays) * 100));
 
                   return (
                     <div 
@@ -150,10 +157,17 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                             {routine.title}
                           </h3>
 
-                          {isCustom && (
+                          {isCustomRange && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-950/80 border border-blue-800/60 text-blue-300 flex items-center gap-1">
                               <Calendar className="w-3 h-3 text-blue-400" />
                               <span>Tiap Tgl {startDay} - {endDay}</span>
+                            </span>
+                          )}
+
+                          {isCustomDays && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-teal-950/80 border border-teal-800/60 text-teal-300 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-teal-400" />
+                              <span>Tiap {formatCustomDaysLabel(routine.customDays)}</span>
                             </span>
                           )}
 
@@ -173,7 +187,7 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                           <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-medium">{routine.category}</span>
                           <span aria-hidden="true">·</span>
 
-                          {isCustom ? (
+                          {isCustomRange ? (
                             <>
                               <span>Target: 1x per bulan (Tgl {startDay} - {endDay})</span>
                               <span aria-hidden="true">·</span>
@@ -193,6 +207,23 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                                 </span>
                               )}
                             </>
+                          ) : isCustomDays ? (
+                            <>
+                              <span>Target: {targetDays} hari/minggu ({formatCustomDaysLabel(routine.customDays)})</span>
+                              <span aria-hidden="true">·</span>
+                              <span className="font-medium text-zinc-300">
+                                Tercapai minggu ini: {thisWeekCompletedCount}/{targetDays} ({progressPercent}%)
+                              </span>
+                              {status.isDueToday && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <span className="text-teal-400 font-semibold flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    <span>Jadwal Hari Ini</span>
+                                  </span>
+                                </>
+                              )}
+                            </>
                           ) : (
                             <>
                               <span>Target: {routine.targetDaysPerWeek} hari/minggu</span>
@@ -208,7 +239,7 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                       {/* Right-hand Action & Weekly / Cycle Status */}
                       <div className="flex flex-wrap items-center gap-3 self-start xl:self-center">
                         {/* Custom Range: Dedicated Big Status Action Button */}
-                        {isCustom && (
+                        {isCustomRange && (
                           <button
                             onClick={() => handleToggle(routine, now)}
                             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs ${
@@ -238,13 +269,16 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800">
                           {currentWeekDays.map((d) => {
                             const isSpecificDateDone = routine.completedDates.includes(d.dayStr);
-                            const isInRange = isCustom 
+                            const dayOfWeek = d.dayObj.getDay();
+                            const isScheduledDay = isCustomDays
+                              ? (routine.customDays?.includes(dayOfWeek) ?? false)
+                              : isCustomRange 
                               ? isDayInMonthRange(d.dayOfMonth, startDay, endDay)
                               : true;
 
                             // Jika custom_range dan sudah selesai bulan ini, hari dalam rentang dianggap fulfilled
-                            const isFulfilled = isCustom 
-                              ? (isInRange && status.isCompleted)
+                            const isFulfilled = isCustomRange 
+                              ? (isScheduledDay && status.isCompleted)
                               : isSpecificDateDone;
 
                             return (
@@ -254,19 +288,29 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
                                 className={`w-8 h-10 rounded-lg flex flex-col items-center justify-center transition cursor-pointer ${
                                   isFulfilled
                                     ? isSpecificDateDone
-                                      ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                                      ? isCustomDays
+                                        ? 'bg-teal-600 text-white shadow-xs font-semibold'
+                                        : 'bg-blue-600 text-white shadow-xs font-semibold'
                                       : 'bg-blue-900/40 text-blue-300 border border-blue-700/50'
                                     : d.isToday
-                                    ? isInRange
-                                      ? 'bg-blue-950/80 text-blue-400 border border-blue-500/80'
+                                    ? isScheduledDay
+                                      ? isCustomDays
+                                        ? 'bg-teal-950/80 text-teal-400 border border-teal-500/80'
+                                        : 'bg-blue-950/80 text-blue-400 border border-blue-500/80'
                                       : 'bg-zinc-850 text-zinc-300 border border-zinc-700'
-                                    : isInRange && isCustom
-                                    ? 'text-blue-400/80 hover:bg-blue-950/40 border border-dashed border-blue-800/40'
-                                    : 'text-zinc-500 hover:bg-zinc-800'
+                                    : isScheduledDay
+                                    ? isCustomDays
+                                      ? 'text-teal-400/90 hover:bg-teal-950/40 border border-dashed border-teal-800/60'
+                                      : isCustomRange
+                                      ? 'text-blue-400/80 hover:bg-blue-950/40 border border-dashed border-blue-800/40'
+                                      : 'text-zinc-400 hover:bg-zinc-800'
+                                    : 'text-zinc-600 hover:bg-zinc-800/50 opacity-40'
                                 }`}
                                 title={
-                                  isCustom
-                                    ? `${d.label} (${d.dayStr}) - ${isInRange ? `Dalam rentang tgl ${startDay}-${endDay}` : 'Di luar rentang'}`
+                                  isCustomDays
+                                    ? `${d.label} (${d.dayStr}) - ${isScheduledDay ? 'Hari Terjadwal' : 'Tidak Terjadwal'}`
+                                    : isCustomRange
+                                    ? `${d.label} (${d.dayStr}) - ${isScheduledDay ? `Dalam rentang tgl ${startDay}-${endDay}` : 'Di luar rentang'}`
                                     : `${d.label} (${d.dayStr})`
                                 }
                               >

@@ -719,6 +719,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   const status = getRoutineStatus(routine, now);
                   const isDone = status.isCompleted;
                   const isCustom = routine.frequency === 'custom_range';
+                  const isCustomDays = routine.frequency === 'custom_days';
 
                   return (
                     <div 
@@ -753,11 +754,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 Tgl {routine.startDay} - {routine.endDay}
                               </span>
                             )}
+                            {isCustomDays && (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border ${
+                                isDone 
+                                  ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40' 
+                                  : status.isDueToday
+                                  ? 'bg-teal-950/70 text-teal-300 border-teal-700/60 animate-pulse'
+                                  : 'bg-zinc-800 text-zinc-400 border-zinc-700/60'
+                              }`}>
+                                {status.badgeText}
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-zinc-400">
                             <span className="text-[10px] text-zinc-400">{routine.category}</span>
                             <span aria-hidden="true">·</span>
-                            {isCustom ? (
+                            {isCustomDays ? (
+                              <span className="text-[10px]">
+                                {isDone ? (
+                                  <span className="text-emerald-400 font-medium">Selesai hari ini</span>
+                                ) : status.isDueToday ? (
+                                  <span className="text-teal-400 font-medium">⚡ Jadwal hari ini</span>
+                                ) : (
+                                  <span className="text-zinc-400">Jadwal: {status.badgeText}</span>
+                                )}
+                              </span>
+                            ) : isCustom ? (
                               <span className="text-[10px]">
                                 {isDone ? (
                                   <span className="text-emerald-400 font-medium">Selesai ({status.completedDateFormatted})</span>
@@ -773,7 +795,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <span aria-hidden="true">·</span>
                             <span className="flex items-center gap-0.5 text-amber-400 font-medium text-[10px]">
                               <Flame className="w-3 h-3 text-amber-400" />
-                              <span className="tabular-nums">{routine.streak} siklus</span>
+                              <span className="tabular-nums">{routine.streak} {isCustomDays ? 'streak' : 'siklus'}</span>
                             </span>
                           </div>
                         </div>

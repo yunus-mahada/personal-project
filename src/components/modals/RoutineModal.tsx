@@ -3,6 +3,7 @@ import { X, Calendar, Info } from 'lucide-react';
 import { db } from '../../db';
 import type { Routine, RoutineFrequency, RoutineTimeOfDay } from '../../types';
 import { cloudUpsertRoutine } from '../../lib/supabase';
+import { formatCustomDaysLabel } from '../../utils/routineUtils';
 
 interface RoutineModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
   const [targetDaysPerWeek, setTargetDaysPerWeek] = useState(5);
   const [startDay, setStartDay] = useState<number>(7);
   const [endDay, setEndDay] = useState<number>(10);
+  const [customDays, setCustomDays] = useState<number[]>([1, 4]);
 
   useEffect(() => {
     if (routineToEdit) {
@@ -34,6 +36,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
       setTargetDaysPerWeek(routineToEdit.targetDaysPerWeek);
       setStartDay(routineToEdit.startDay ?? 7);
       setEndDay(routineToEdit.endDay ?? 10);
+      setCustomDays(routineToEdit.customDays && routineToEdit.customDays.length > 0 ? routineToEdit.customDays : [1, 4]);
     } else {
       setTitle('');
       setDescription('');
@@ -43,6 +46,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
       setTargetDaysPerWeek(5);
       setStartDay(7);
       setEndDay(10);
+      setCustomDays([1, 4]);
     }
   }, [routineToEdit, isOpen]);
 
@@ -63,9 +67,14 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
       frequency,
       timeOfDay,
       category: category.trim() || 'Bisnis',
-      targetDaysPerWeek: frequency === 'custom_range' ? 1 : (Number(targetDaysPerWeek) || 5),
+      targetDaysPerWeek: frequency === 'custom_range' 
+        ? 1 
+        : frequency === 'custom_days'
+        ? (customDays.length || 1)
+        : (Number(targetDaysPerWeek) || 5),
       startDay: frequency === 'custom_range' ? actualStart : undefined,
       endDay: frequency === 'custom_range' ? actualEnd : undefined,
+      customDays: frequency === 'custom_days' ? (customDays.length > 0 ? customDays : [1]) : undefined,
       completedDates: routineToEdit?.completedDates || [],
       streak: routineToEdit?.streak || 0,
       createdAt: routineToEdit?.createdAt || nowIso
@@ -137,6 +146,7 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
                 <option value="workdays">Hari Kerja (Senin - Jumat)</option>
                 <option value="daily">Setiap Hari (7 Hari)</option>
                 <option value="weekly">Mingguan (Sekali Seminggu)</option>
+                <option value="custom_days">📅 Custom Hari (Pilih Hari Tertentu: misal Sen & Kam)</option>
                 <option value="custom_range">📅 Custom Tanggal Bulanan (Misal Tgl 7 - 10)</option>
               </select>
             </div>
@@ -154,6 +164,112 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Konfigurasi Hari Pilihan jika custom_days */}
+          {frequency === 'custom_days' && (
+            <div className="p-3.5 rounded-xl bg-teal-950/20 border border-teal-800/40 space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-300">
+                  <Calendar className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Pilih Hari Pelaksanaan Rutinitas</span>
+                </div>
+                <span className="text-[11px] font-medium text-teal-400 bg-teal-950/80 px-2 py-0.5 rounded border border-teal-800/60">
+                  {customDays.length} hari terpilih
+                </span>
+              </div>
+
+              {/* 7-Day Toggle Buttons */}
+              <div className="grid grid-cols-7 gap-1.5">
+                {[
+                  { day: 1, label: 'Sen', full: 'Senin' },
+                  { day: 2, label: 'Sel', full: 'Selasa' },
+                  { day: 3, label: 'Rab', full: 'Rabu' },
+                  { day: 4, label: 'Kam', full: 'Kamis' },
+                  { day: 5, label: 'Jum', full: 'Jumat' },
+                  { day: 6, label: 'Sab', full: 'Sabtu' },
+                  { day: 0, label: 'Min', full: 'Minggu' }
+                ].map((item) => {
+                  const isSelected = customDays.includes(item.day);
+                  return (
+                    <button
+                      key={item.day}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          if (customDays.length > 1) {
+                            setCustomDays(customDays.filter(d => d !== item.day));
+                          }
+                        } else {
+                          setCustomDays([...customDays, item.day]);
+                        }
+                      }}
+                      className={`h-11 rounded-lg flex flex-col items-center justify-center transition border cursor-pointer ${
+                        isSelected
+                          ? 'bg-teal-600 border-teal-500 text-white font-bold shadow-xs'
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white'
+                      }`}
+                      title={item.full}
+                    >
+                      <span className="text-[10px] font-medium">{item.label}</span>
+                      <span className="text-[9px] opacity-75">{isSelected ? '✓' : '+'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Presets for Custom Days */}
+              <div>
+                <span className="text-[10px] text-zinc-400 block mb-1.5">Preset Pilihan Hari:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCustomDays([1, 4])}
+                    className="px-2 py-1 text-[10px] rounded-md bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 transition cursor-pointer"
+                  >
+                    📌 Sen & Kam (2 hari)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomDays([1, 3, 5])}
+                    className="px-2 py-1 text-[10px] rounded-md bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 transition cursor-pointer"
+                  >
+                    ⚡ Sen, Rab, Jum (3 hari)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomDays([2, 4])}
+                    className="px-2 py-1 text-[10px] rounded-md bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 transition cursor-pointer"
+                  >
+                    🗓️ Sel & Kam (2 hari)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomDays([6, 0])}
+                    className="px-2 py-1 text-[10px] rounded-md bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 transition cursor-pointer"
+                  >
+                    🏖️ Akhir Pekan (Sab & Min)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomDays([1, 2, 3, 4, 5, 6])}
+                    className="px-2 py-1 text-[10px] rounded-md bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 transition cursor-pointer"
+                  >
+                    💼 Sen - Sab (6 hari)
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800/80 text-[11px] text-zinc-300 leading-relaxed flex items-start gap-2">
+                <Info className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-white">Jadwal Pelaksanaan:</p>
+                  <p className="text-zinc-400 mt-0.5">
+                    Rutinitas akan aktif setiap hari <strong className="text-teal-300">{formatCustomDaysLabel(customDays)}</strong>. Pada hari-hari tersebut, rutinitas akan otomatis muncul di Kalender Bisnis dan Dashboard Anda.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Konfigurasi Rentang Tanggal jika custom_range */}
           {frequency === 'custom_range' && (
@@ -258,11 +374,19 @@ export const RoutineModal: React.FC<RoutineModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1">
-                {frequency === 'custom_range' ? 'Target Penyelesaian' : 'Target Hari / Minggu'}
+                {frequency === 'custom_range' 
+                  ? 'Target Penyelesaian' 
+                  : frequency === 'custom_days'
+                  ? 'Target Hari Terpilih'
+                  : 'Target Hari / Minggu'}
               </label>
               {frequency === 'custom_range' ? (
                 <div className="px-3 py-2 text-xs rounded-lg border border-zinc-800 bg-zinc-950/80 text-emerald-400 font-medium">
                   ✓ 1x per siklus bulan
+                </div>
+              ) : frequency === 'custom_days' ? (
+                <div className="px-3 py-2 text-xs rounded-lg border border-zinc-800 bg-zinc-950/80 text-teal-400 font-medium truncate" title={formatCustomDaysLabel(customDays)}>
+                  ✓ {customDays.length} hari/minggu ({formatCustomDaysLabel(customDays)})
                 </div>
               ) : (
                 <input

@@ -54,7 +54,8 @@ import {
 import { 
   getRoutineStatus, 
   toggleRoutineCompletion, 
-  isDayInMonthRange 
+  isDayInMonthRange,
+  formatCustomDaysLabel 
 } from '../../utils/routineUtils';
 
 interface CalendarViewProps {
@@ -238,6 +239,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           const end = r.endDay ?? start;
           appliesToDay = isDayInMonthRange(dayOfMonth, start, end);
           freqLabel = `Tgl ${start} - ${end}`;
+        } else if (r.frequency === 'custom_days') {
+          const customDays = r.customDays || [];
+          appliesToDay = customDays.includes(dayOfWeek);
+          freqLabel = formatCustomDaysLabel(customDays);
         } else if (r.frequency === 'workdays') {
           appliesToDay = dayOfWeek >= 1 && dayOfWeek <= 5;
           freqLabel = 'Hari Kerja';

@@ -220,6 +220,7 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; message
         target_days_per_week: r.targetDaysPerWeek,
         start_day: r.startDay ?? null,
         end_day: r.endDay ?? null,
+        custom_days: r.customDays || [],
         completed_dates: r.completedDates,
         streak: r.streak,
         created_at: r.createdAt
@@ -437,6 +438,7 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
           targetDaysPerWeek: Number(r.target_days_per_week || 7),
           startDay: r.start_day ? Number(r.start_day) : undefined,
           endDay: r.end_day ? Number(r.end_day) : undefined,
+          customDays: Array.isArray(r.custom_days) ? r.custom_days : [],
           completedDates: Array.isArray(r.completed_dates) ? r.completed_dates : [],
           streak: Number(r.streak || 0),
           createdAt: r.created_at
@@ -638,6 +640,7 @@ export async function cloudUpsertRoutine(routine: Routine) {
       target_days_per_week: routine.targetDaysPerWeek,
       start_day: routine.startDay ?? null,
       end_day: routine.endDay ?? null,
+      custom_days: routine.customDays || [],
       completed_dates: routine.completedDates,
       streak: routine.streak,
       created_at: routine.createdAt

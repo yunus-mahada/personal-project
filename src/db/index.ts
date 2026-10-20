@@ -571,6 +571,19 @@ export async function seedSampleDemoData() {
       completedDates: ['2026-10-08'],
       streak: 3,
       createdAt: '2026-10-01T09:00:00Z'
+    },
+    {
+      id: 'rtn-6',
+      title: 'Review Pipeline & Follow-up Klien Prioritas',
+      description: 'Cek status deal CRM dan jadwalkan follow-up dengan klien tier-1 setiap Senin & Kamis.',
+      frequency: 'custom_days',
+      timeOfDay: 'morning',
+      category: 'Penjualan',
+      targetDaysPerWeek: 2,
+      customDays: [1, 4],
+      completedDates: ['2026-10-15', '2026-10-19'],
+      streak: 5,
+      createdAt: '2026-10-01T08:00:00Z'
     }
   ];
   await db.routines.bulkPut(sampleRoutines);

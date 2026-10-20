@@ -24,6 +24,26 @@ export function isDayInMonthRange(dayOfMonth: number, startDay: number, endDay: 
   return dayOfMonth >= startDay || dayOfMonth <= endDay;
 }
 
+export const DAY_NAMES_ID: { [key: number]: { short: string; full: string } } = {
+  1: { short: 'Sen', full: 'Senin' },
+  2: { short: 'Sel', full: 'Selasa' },
+  3: { short: 'Rab', full: 'Rabu' },
+  4: { short: 'Kam', full: 'Kamis' },
+  5: { short: 'Jum', full: 'Jumat' },
+  6: { short: 'Sab', full: 'Sabtu' },
+  0: { short: 'Min', full: 'Minggu' }
+};
+
+export function formatCustomDaysLabel(customDays: number[] = []): string {
+  if (!customDays || customDays.length === 0) return 'Belum dipilih';
+  const sorted = [...customDays].sort((a, b) => {
+    const orderA = a === 0 ? 7 : a;
+    const orderB = b === 0 ? 7 : b;
+    return orderA - orderB;
+  });
+  return sorted.map(d => DAY_NAMES_ID[d]?.short || '').filter(Boolean).join(', ');
+}
+
 /**
  * Mendapatkan status lengkap rutinitas untuk tanggal tertentu (default: hari ini).
  */
@@ -116,6 +136,24 @@ export function getRoutineStatus(routine: Routine, date: Date = new Date()): Rou
       scheduleDescription: 'Senin - Jumat',
       isCustomRange: false,
       isInsideWindow: isWorkday
+    };
+  }
+
+  if (routine.frequency === 'custom_days') {
+    const customDays = routine.customDays || [];
+    const isScheduledToday = customDays.includes(dayOfWeek);
+    const isCompleted = routine.completedDates?.includes(dateStr) ?? false;
+    const daysLabel = formatCustomDaysLabel(customDays);
+
+    return {
+      isDueToday: isScheduledToday,
+      isCompleted,
+      completedDate: isCompleted ? dateStr : undefined,
+      completedDateFormatted: isCompleted ? format(date, 'd MMM', { locale: id }) : undefined,
+      badgeText: daysLabel,
+      scheduleDescription: `Setiap ${daysLabel} (${customDays.length} hari/minggu)`,
+      isCustomRange: false,
+      isInsideWindow: isScheduledToday
     };
   }
 
