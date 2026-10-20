@@ -72,11 +72,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
       completedAt: nextCompleted ? nowIso : undefined,
       updatedAt: nowIso
     };
-    await db.tasks.put(updatedTask);
-    cloudUpsertTask(updatedTask).catch(console.error);
-
-    if (nextCompleted) {
-      confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+    try {
+      await cloudUpsertTask(updatedTask);
+      await db.tasks.put(updatedTask);
+      if (nextCompleted) {
+        confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui status tugas di Supabase:', err);
+      alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
   };
 
@@ -90,11 +94,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
       completedAt: isDone ? nowIso : undefined,
       updatedAt: nowIso
     };
-    await db.tasks.put(updatedTask);
-    cloudUpsertTask(updatedTask).catch(console.error);
-
-    if (isDone) {
-      confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+    try {
+      await cloudUpsertTask(updatedTask);
+      await db.tasks.put(updatedTask);
+      if (isDone) {
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memindahkan status tugas di Supabase:', err);
+      alert(`Gagal menyimpan perubahan status ke Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
   };
 
@@ -105,14 +113,24 @@ export const TasksView: React.FC<TasksViewProps> = ({
       category: nextCategory,
       updatedAt: nowIso
     };
-    await db.tasks.put(updatedTask);
-    cloudUpsertTask(updatedTask).catch(console.error);
+    try {
+      await cloudUpsertTask(updatedTask);
+      await db.tasks.put(updatedTask);
+    } catch (err: any) {
+      console.error('Gagal mengubah kategori tugas di Supabase:', err);
+      alert(`Gagal menyimpan perubahan kategori ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   const handleDeleteTask = async (id: string, title: string) => {
     if (window.confirm(`Hapus tugas "${title}"?`)) {
-      await db.tasks.delete(id);
-      cloudDeleteTask(id).catch(console.error);
+      try {
+        await cloudDeleteTask(id);
+        await db.tasks.delete(id);
+      } catch (err: any) {
+        console.error('Gagal menghapus tugas di Supabase:', err);
+        alert(`Gagal menghapus tugas dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+      }
     }
   };
 
@@ -137,9 +155,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
       updatedAt: nowIso
     };
 
-    await db.tasks.put(newTask);
-    cloudUpsertTask(newTask).catch(console.error);
-    setQuickTitle('');
+    try {
+      await cloudUpsertTask(newTask);
+      await db.tasks.put(newTask);
+      setQuickTitle('');
+    } catch (err: any) {
+      console.error('Gagal menambahkan tugas ke Supabase:', err);
+      alert(`Gagal menyimpan tugas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   const columns: { id: TaskStatus; title: string; color: string }[] = [

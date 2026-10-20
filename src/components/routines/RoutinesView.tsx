@@ -66,18 +66,27 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({
 
     const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(routine, targetDate);
 
-    if (isNowCompleted) {
-      confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+    try {
+      await cloudUpsertRoutine(updatedRoutine);
+      await db.routines.put(updatedRoutine);
+      if (isNowCompleted) {
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui rutinitas di Supabase:', err);
+      alert(`Gagal menyimpan rutinitas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
-
-    await db.routines.put(updatedRoutine);
-    cloudUpsertRoutine(updatedRoutine).catch(console.error);
   };
 
   const handleDeleteRoutine = async (id: string, title: string) => {
     if (window.confirm(`Hapus rutinitas "${title}"?`)) {
-      await db.routines.delete(id);
-      cloudDeleteRoutine(id).catch(console.error);
+      try {
+        await cloudDeleteRoutine(id);
+        await db.routines.delete(id);
+      } catch (err: any) {
+        console.error('Gagal menghapus rutinitas dari Supabase:', err);
+        alert(`Gagal menghapus rutinitas dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+      }
     }
   };
 

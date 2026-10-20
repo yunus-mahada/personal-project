@@ -322,7 +322,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (goals && goals.length > 0) {
+    if (goals) {
+      const cloudIds = new Set(goals.map(g => g.id));
+      const localGoals = await db.goals.toArray();
+      for (const lg of localGoals) {
+        if (!cloudIds.has(lg.id)) {
+          await cloudUpsertGoal(lg).catch(console.error);
+        }
+      }
       for (const g of goals) {
         await db.goals.put({
           id: g.id,
@@ -342,7 +349,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (projects && projects.length > 0) {
+    if (projects) {
+      const cloudIds = new Set(projects.map(p => p.id));
+      const localProjects = await db.projects.toArray();
+      for (const lp of localProjects) {
+        if (!cloudIds.has(lp.id)) {
+          await cloudUpsertProject(lp).catch(console.error);
+        }
+      }
       for (const p of projects) {
         await db.projects.put({
           id: p.id,
@@ -361,7 +375,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (tasks && tasks.length > 0) {
+    if (tasks) {
+      const cloudIds = new Set(tasks.map(t => t.id));
+      const localTasks = await db.tasks.toArray();
+      for (const lt of localTasks) {
+        if (!cloudIds.has(lt.id)) {
+          await cloudUpsertTask(lt).catch(console.error);
+        }
+      }
       for (const t of tasks) {
         await db.tasks.put({
           id: t.id,
@@ -389,7 +410,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (events && events.length > 0) {
+    if (events) {
+      const cloudIds = new Set(events.map(e => e.id));
+      const localEvents = await db.calendarEvents.toArray();
+      for (const le of localEvents) {
+        if (!cloudIds.has(le.id)) {
+          await cloudUpsertCalendarEvent(le).catch(console.error);
+        }
+      }
       for (const e of events) {
         await db.calendarEvents.put({
           id: e.id,
@@ -409,7 +437,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (notes && notes.length > 0) {
+    if (notes) {
+      const cloudIds = new Set(notes.map(n => n.id));
+      const localNotes = await db.notes.toArray();
+      for (const ln of localNotes) {
+        if (!cloudIds.has(ln.id)) {
+          await cloudUpsertNote(ln).catch(console.error);
+        }
+      }
       for (const n of notes) {
         await db.notes.put({
           id: n.id,
@@ -426,7 +461,14 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
       }
     }
 
-    if (routines && routines.length > 0) {
+    if (routines) {
+      const cloudIds = new Set(routines.map(r => r.id));
+      const localRoutines = await db.routines.toArray();
+      for (const lr of localRoutines) {
+        if (!cloudIds.has(lr.id)) {
+          await cloudUpsertRoutine(lr).catch(console.error);
+        }
+      }
       for (const r of routines) {
         await db.routines.put({
           id: r.id,
@@ -463,240 +505,279 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
 // Fungsi-fungsi berikut otomatis mengirim data ke Supabase seketika saat user simpan
 // ==============================================================================
 
-export async function cloudUpsertGoal(goal: Goal) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('goals').upsert({
-      id: goal.id,
-      title: goal.title,
-      description: goal.description,
-      category: goal.category,
-      target_value: goal.targetValue,
-      current_value: goal.currentValue,
-      unit: goal.unit,
-      deadline: goal.deadline,
-      status: goal.status,
-      priority: goal.priority,
-      color: goal.color,
-      created_at: goal.createdAt,
-      updated_at: goal.updatedAt
-    });
-  } catch (err) {
-    console.warn('Auto-save goal to cloud error:', err);
+export async function cloudUpsertGoal(goal: Goal): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('goals').upsert({
+    id: goal.id,
+    title: goal.title,
+    description: goal.description,
+    category: goal.category,
+    target_value: goal.targetValue,
+    current_value: goal.currentValue,
+    unit: goal.unit,
+    deadline: goal.deadline,
+    status: goal.status,
+    priority: goal.priority,
+    color: goal.color,
+    created_at: goal.createdAt,
+    updated_at: goal.updatedAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Goal ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Sasaran ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteGoal(goalId: string) {
+export async function cloudDeleteGoal(goalId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('goals').delete().eq('id', goalId);
-  } catch (err) {
-    console.warn('Auto-delete goal from cloud error:', err);
+  const { error } = await supabase.from('goals').delete().eq('id', goalId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Goal dari Cloud:', error);
+    throw new Error(`Gagal menghapus Sasaran dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertProject(project: Project) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('projects').upsert({
-      id: project.id,
-      goal_id: project.goalId || null,
-      title: project.title,
-      description: project.description,
-      status: project.status,
-      priority: project.priority,
-      start_date: project.startDate,
-      due_date: project.dueDate,
-      category: project.category,
-      tags: project.tags,
-      created_at: project.createdAt,
-      updated_at: project.updatedAt
-    });
-  } catch (err) {
-    console.warn('Auto-save project to cloud error:', err);
+export async function cloudUpsertProject(project: Project): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('projects').upsert({
+    id: project.id,
+    goal_id: project.goalId || null,
+    title: project.title,
+    description: project.description,
+    status: project.status,
+    priority: project.priority,
+    start_date: project.startDate,
+    due_date: project.dueDate,
+    category: project.category,
+    tags: project.tags,
+    created_at: project.createdAt,
+    updated_at: project.updatedAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Project ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Proyek ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteProject(projectId: string) {
+export async function cloudDeleteProject(projectId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('projects').delete().eq('id', projectId);
-  } catch (err) {
-    console.warn('Auto-delete project from cloud error:', err);
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Project dari Cloud:', error);
+    throw new Error(`Gagal menghapus Proyek dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertTask(task: Task) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('tasks').upsert({
-      id: task.id,
-      project_id: task.projectId || null,
-      goal_id: task.goalId || null,
-      title: task.title,
-      description: task.description,
-      category: task.category || 'Tugas',
-      status: task.status,
-      priority: task.priority,
-      eisenhower: task.eisenhower,
-      due_date: task.dueDate,
-      estimated_minutes: task.estimatedMinutes,
-      actual_minutes: task.actualMinutes,
-      scheduled_date: task.scheduledDate,
-      scheduled_start_time: task.scheduledStartTime,
-      scheduled_end_time: task.scheduledEndTime,
-      calendar_event_id: task.calendarEventId,
-      is_completed: task.isCompleted,
-      completed_at: task.completedAt,
-      tags: task.tags,
-      created_at: task.createdAt,
-      updated_at: task.updatedAt
-    });
-  } catch (err) {
-    console.warn('Auto-save task to cloud error:', err);
+export async function cloudUpsertTask(task: Task): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('tasks').upsert({
+    id: task.id,
+    project_id: task.projectId || null,
+    goal_id: task.goalId || null,
+    title: task.title,
+    description: task.description,
+    category: task.category || 'Tugas',
+    status: task.status,
+    priority: task.priority,
+    eisenhower: task.eisenhower,
+    due_date: task.dueDate,
+    estimated_minutes: task.estimatedMinutes,
+    actual_minutes: task.actualMinutes,
+    scheduled_date: task.scheduledDate,
+    scheduled_start_time: task.scheduledStartTime,
+    scheduled_end_time: task.scheduledEndTime,
+    calendar_event_id: task.calendarEventId,
+    is_completed: task.isCompleted,
+    completed_at: task.completedAt,
+    tags: task.tags,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Task ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Tugas ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteTask(taskId: string) {
+export async function cloudDeleteTask(taskId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('tasks').delete().eq('id', taskId);
-  } catch (err) {
-    console.warn('Auto-delete task from cloud error:', err);
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Task dari Cloud:', error);
+    throw new Error(`Gagal menghapus Tugas dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertCalendarEvent(event: CalendarEvent) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('calendar_events').upsert({
-      id: event.id,
-      task_id: event.taskId || null,
-      project_id: event.projectId || null,
-      title: event.title,
-      description: event.description,
-      start_time: event.startTime,
-      end_time: event.endTime,
-      category: event.category,
-      location_or_link: event.locationOrLink,
-      is_completed: event.isCompleted,
-      color: event.color,
-      created_at: event.createdAt,
-      updated_at: event.updatedAt || event.createdAt
-    });
-  } catch (err) {
-    console.warn('Auto-save event to cloud error:', err);
+export async function cloudUpsertCalendarEvent(event: CalendarEvent): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('calendar_events').upsert({
+    id: event.id,
+    task_id: event.taskId || null,
+    project_id: event.projectId || null,
+    title: event.title,
+    description: event.description,
+    start_time: event.startTime,
+    end_time: event.endTime,
+    category: event.category,
+    location_or_link: event.locationOrLink,
+    is_completed: event.isCompleted,
+    color: event.color,
+    created_at: event.createdAt,
+    updated_at: event.updatedAt || event.createdAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan CalendarEvent ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Agenda ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteCalendarEvent(eventId: string) {
+export async function cloudDeleteCalendarEvent(eventId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('calendar_events').delete().eq('id', eventId);
-  } catch (err) {
-    console.warn('Auto-delete event from cloud error:', err);
+  const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus CalendarEvent dari Cloud:', error);
+    throw new Error(`Gagal menghapus Agenda dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertNote(note: Note) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('notes').upsert({
-      id: note.id,
-      project_id: note.projectId || null,
-      goal_id: note.goalId || null,
-      title: note.title,
-      content: note.content,
-      category: note.category,
-      tags: note.tags,
-      is_pinned: note.isPinned,
-      created_at: note.createdAt,
-      updated_at: note.updatedAt
-    });
-  } catch (err) {
-    console.warn('Auto-save note to cloud error:', err);
+export async function cloudUpsertNote(note: Note): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('notes').upsert({
+    id: note.id,
+    project_id: note.projectId || null,
+    goal_id: note.goalId || null,
+    title: note.title,
+    content: note.content,
+    category: note.category,
+    tags: note.tags,
+    is_pinned: note.isPinned,
+    created_at: note.createdAt,
+    updated_at: note.updatedAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Note ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Catatan ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteNote(noteId: string) {
+export async function cloudDeleteNote(noteId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('notes').delete().eq('id', noteId);
-  } catch (err) {
-    console.warn('Auto-delete note from cloud error:', err);
+  const { error } = await supabase.from('notes').delete().eq('id', noteId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Note dari Cloud:', error);
+    throw new Error(`Gagal menghapus Catatan dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertRoutine(routine: Routine) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('routines').upsert({
-      id: routine.id,
-      title: routine.title,
-      description: routine.description,
-      frequency: routine.frequency,
-      time_of_day: routine.timeOfDay,
-      category: routine.category,
-      target_days_per_week: routine.targetDaysPerWeek,
-      start_day: routine.startDay ?? null,
-      end_day: routine.endDay ?? null,
-      custom_days: routine.customDays || [],
-      completed_dates: routine.completedDates,
-      streak: routine.streak,
-      created_at: routine.createdAt
-    });
-  } catch (err) {
-    console.warn('Auto-save routine to cloud error:', err);
+export async function cloudUpsertRoutine(routine: Routine): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('routines').upsert({
+    id: routine.id,
+    title: routine.title,
+    description: routine.description,
+    frequency: routine.frequency,
+    time_of_day: routine.timeOfDay,
+    category: routine.category,
+    target_days_per_week: routine.targetDaysPerWeek,
+    start_day: routine.startDay ?? null,
+    end_day: routine.endDay ?? null,
+    custom_days: routine.customDays || [],
+    completed_dates: routine.completedDates,
+    streak: routine.streak,
+    created_at: routine.createdAt
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Routine ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Rutinitas ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteRoutine(routineId: string) {
+export async function cloudDeleteRoutine(routineId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('routines').delete().eq('id', routineId);
-  } catch (err) {
-    console.warn('Auto-delete routine from cloud error:', err);
+  const { error } = await supabase.from('routines').delete().eq('id', routineId);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Routine dari Cloud:', error);
+    throw new Error(`Gagal menghapus Rutinitas dari Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertSettings(settings: UserSettings) {
-  if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('settings').upsert({
-      id: settings.id,
-      user_name: settings.userName,
-      business_name: settings.businessName,
-      currency: settings.currency,
-      default_weekly_goal_hours: settings.defaultWeeklyGoalHours,
-      theme: settings.theme,
-      has_completed_onboarding: settings.hasCompletedOnboarding,
-      goal_categories: settings.goalCategories,
-      updated_at: new Date().toISOString()
-    });
-  } catch (err) {
-    console.warn('Auto-save settings to cloud error:', err);
+export async function cloudUpsertSettings(settings: UserSettings): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Kredensial Supabase belum terkonfigurasi pada .env');
+  }
+  const { error } = await supabase.from('settings').upsert({
+    id: settings.id,
+    user_name: settings.userName,
+    business_name: settings.businessName,
+    currency: settings.currency,
+    default_weekly_goal_hours: settings.defaultWeeklyGoalHours,
+    theme: settings.theme,
+    has_completed_onboarding: settings.hasCompletedOnboarding,
+    goal_categories: settings.goalCategories,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Settings ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Pengaturan ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudUpsertCategory(categoryName: string, color?: string) {
+export async function cloudUpsertCategory(categoryName: string, color?: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  try {
-    await supabase.from('business_categories').upsert({
-      id: `cat-${Date.now()}`,
-      name: categoryName,
-      color: color || '#3b82f6',
-      created_at: new Date().toISOString()
-    }, { onConflict: 'name' });
-  } catch (err) {
-    console.warn('Auto-save category to cloud error:', err);
+  const { error } = await supabase.from('business_categories').upsert({
+    id: `cat-${Date.now()}`,
+    name: categoryName,
+    color: color || '#3b82f6',
+    created_at: new Date().toISOString()
+  }, { onConflict: 'name' });
+  if (error) {
+    console.error('[Supabase Error] Gagal menyimpan Category ke Cloud:', error);
+    throw new Error(`Gagal menyimpan Kategori ke Supabase: ${error.message}`);
   }
 }
 
-export async function cloudDeleteCategory(categoryName: string) {
+export async function cloudDeleteCategory(categoryName: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
+  const { error } = await supabase.from('business_categories').delete().eq('name', categoryName);
+  if (error) {
+    console.error('[Supabase Error] Gagal menghapus Category dari Cloud:', error);
+    throw new Error(`Gagal menghapus Kategori dari Supabase: ${error.message}`);
+  }
+}
+
+/**
+ * Langganan event realtime Supabase untuk sinkronisasi otomatis multi-tab / multi-device
+ */
+export function subscribeToSupabaseRealtime(onSync?: () => void) {
+  if (!isSupabaseConfigured()) return () => {};
+
   try {
-    await supabase.from('business_categories').delete().eq('name', categoryName);
+    const channel = supabase
+      .channel('supabase-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        syncSupabaseToLocal().then(() => {
+          if (onSync) onSync();
+        }).catch(console.error);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   } catch (err) {
-    console.warn('Auto-delete category from cloud error:', err);
+    console.warn('Realtime subscription error:', err);
+    return () => {};
   }
 }

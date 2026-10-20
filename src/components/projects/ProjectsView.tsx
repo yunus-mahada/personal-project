@@ -81,48 +81,79 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   // Quick update project status directly from table
   const handleQuickStatusChange = async (projectId: string, nextStatus: ProjectStatus) => {
+    const existing = await db.projects.get(projectId);
+    if (!existing) return;
     const nowIso = new Date().toISOString();
-    await db.projects.update(projectId, {
+    const updated: Project = {
+      ...existing,
       status: nextStatus,
       updatedAt: nowIso
-    });
-    const updated = await db.projects.get(projectId);
-    if (updated) cloudUpsertProject(updated).catch(console.error);
+    };
 
-    if (nextStatus === 'completed') {
-      confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
+    try {
+      await cloudUpsertProject(updated);
+      await db.projects.put(updated);
+      if (nextStatus === 'completed') {
+        confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui status proyek di Supabase:', err);
+      alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
   };
 
   // Quick update project priority directly from table
   const handleQuickPriorityChange = async (projectId: string, nextPriority: ProjectPriority) => {
+    const existing = await db.projects.get(projectId);
+    if (!existing) return;
     const nowIso = new Date().toISOString();
-    await db.projects.update(projectId, {
+    const updated: Project = {
+      ...existing,
       priority: nextPriority,
       updatedAt: nowIso
-    });
-    const updated = await db.projects.get(projectId);
-    if (updated) cloudUpsertProject(updated).catch(console.error);
+    };
+
+    try {
+      await cloudUpsertProject(updated);
+      await db.projects.put(updated);
+    } catch (err: any) {
+      console.error('Gagal memperbarui prioritas proyek di Supabase:', err);
+      alert(`Gagal menyimpan perubahan prioritas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   // Quick update project category directly from table (using business categories from settings)
   const handleQuickCategoryChange = async (projectId: string, nextCategory: string) => {
+    const existing = await db.projects.get(projectId);
+    if (!existing) return;
     const nowIso = new Date().toISOString();
-    await db.projects.update(projectId, {
+    const updated: Project = {
+      ...existing,
       category: nextCategory,
       updatedAt: nowIso
-    });
-    const updated = await db.projects.get(projectId);
-    if (updated) cloudUpsertProject(updated).catch(console.error);
+    };
+
+    try {
+      await cloudUpsertProject(updated);
+      await db.projects.put(updated);
+    } catch (err: any) {
+      console.error('Gagal memperbarui kategori proyek di Supabase:', err);
+      alert(`Gagal menyimpan perubahan kategori ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   // Safe delete project without window.confirm
   const handleExecuteDelete = async (id: string) => {
-    await db.projects.delete(id);
-    cloudDeleteProject(id).catch(console.error);
-    setConfirmDeleteId(null);
-    if (activeProjectDetail?.id === id) {
-      setActiveProjectDetail(null);
+    try {
+      await cloudDeleteProject(id);
+      await db.projects.delete(id);
+      setConfirmDeleteId(null);
+      if (activeProjectDetail?.id === id) {
+        setActiveProjectDetail(null);
+      }
+    } catch (err: any) {
+      console.error('Gagal menghapus proyek dari Supabase:', err);
+      alert(`Gagal menghapus proyek dari Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
   };
 
@@ -136,11 +167,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       completedAt: nextCompleted ? nowIso : undefined,
       updatedAt: nowIso
     };
-    await db.tasks.put(updatedTask);
-    cloudUpsertTask(updatedTask).catch(console.error);
 
-    if (nextCompleted) {
-      confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
+    try {
+      await cloudUpsertTask(updatedTask);
+      await db.tasks.put(updatedTask);
+      if (nextCompleted) {
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui status tugas di Supabase:', err);
+      alert(`Gagal menyimpan perubahan status tugas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
     }
   };
 

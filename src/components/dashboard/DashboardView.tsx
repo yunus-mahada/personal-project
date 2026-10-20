@@ -29,7 +29,7 @@ import {
   CALENDAR_CATEGORY_LABELS
 } from '../../utils/formatters';
 import { getRoutineStatus, toggleRoutineCompletion } from '../../utils/routineUtils';
-import { cloudUpsertRoutine } from '../../lib/supabase';
+import { cloudUpsertRoutine, cloudUpsertTask } from '../../lib/supabase';
 
 interface DashboardViewProps {
   onNavigate: (tab: ActiveTab, itemId?: string) => void;
@@ -104,19 +104,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleToggleTask = async (task: Task) => {
     const nextCompleted = !task.isCompleted;
     const nowIso = new Date().toISOString();
-    await db.tasks.update(task.id, {
+    const updatedTask: Task = {
+      ...task,
       isCompleted: nextCompleted,
       status: nextCompleted ? 'done' : 'todo',
       completedAt: nextCompleted ? nowIso : undefined,
       updatedAt: nowIso
-    });
+    };
 
-    if (nextCompleted) {
-      confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { y: 0.8 }
-      });
+    try {
+      await cloudUpsertTask(updatedTask);
+      await db.tasks.put(updatedTask);
+      if (nextCompleted) {
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.8 }
+        });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui status tugas di Supabase:', err);
+      alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi Supabase'}`);
     }
   };
 
@@ -138,18 +146,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       updatedAt: nowIso
     };
 
-    await db.tasks.put(newTask);
-    setQuickTaskTitle('');
+    try {
+      await cloudUpsertTask(newTask);
+      await db.tasks.put(newTask);
+      setQuickTaskTitle('');
+    } catch (err: any) {
+      console.error('Gagal menambahkan tugas ke Supabase:', err);
+      alert(`Gagal menyimpan tugas baru ke Supabase: ${err.message || 'Cek koneksi Supabase'}`);
+    }
   };
 
   // Toggle routine for today / current cycle
   const handleToggleRoutine = async (routine: Routine) => {
     const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(routine, now);
-    if (isNowCompleted) {
-      confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+    try {
+      await cloudUpsertRoutine(updatedRoutine);
+      await db.routines.put(updatedRoutine);
+      if (isNowCompleted) {
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+      }
+    } catch (err: any) {
+      console.error('Gagal memperbarui rutinitas di Supabase:', err);
+      alert(`Gagal menyimpan rutinitas ke Supabase: ${err.message || 'Cek koneksi Supabase'}`);
     }
-    await db.routines.put(updatedRoutine);
-    cloudUpsertRoutine(updatedRoutine).catch(console.error);
   };
 
   return (

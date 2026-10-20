@@ -58,9 +58,11 @@ export const EventModal: React.FC<EventModalProps> = ({
     }
   }, [eventToEdit, defaultDate, defaultTime, isOpen]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSubmitting) return;
 
     const startDateTime = `${date}T${startTime}:00`;
     const endDateTime = `${date}T${endTime}:00`;
@@ -81,9 +83,19 @@ export const EventModal: React.FC<EventModalProps> = ({
       updatedAt: nowIso
     };
 
-    await db.calendarEvents.put(eventData);
-    cloudUpsertCalendarEvent(eventData).catch(console.error);
-    onClose();
+    setIsSubmitting(true);
+    try {
+      // 1. Simpan langsung ke Supabase Cloud (Primary Store)
+      await cloudUpsertCalendarEvent(eventData);
+      // 2. Simpan ke local cache untuk responsivitas UI
+      await db.calendarEvents.put(eventData);
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving event to Supabase:', err);
+      alert(`Gagal menyimpan agenda ke Supabase: ${err.message || 'Cek koneksi Supabase Anda'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -231,9 +243,10 @@ export const EventModal: React.FC<EventModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shadow-xs flex items-center gap-1.5"
             >
-              {eventToEdit ? 'Simpan Perubahan' : 'Jadwalkan'}
+              {isSubmitting ? 'Menyimpan ke Cloud...' : (eventToEdit ? 'Simpan Perubahan' : 'Jadwalkan')}
             </button>
           </div>
         </form>

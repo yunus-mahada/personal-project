@@ -82,9 +82,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     setProjectId(selectedProjId);
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSubmitting) return;
 
     const tags = tagsInput
       .split(',')
@@ -117,39 +119,49 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       updatedAt: nowIso
     };
 
-    await db.tasks.put(taskData);
-    cloudUpsertTask(taskData).catch(console.error);
+    setIsSubmitting(true);
+    try {
+      // 1. Simpan langsung ke Supabase Cloud (Primary Store)
+      await cloudUpsertTask(taskData);
 
-    // Sync with calendar event
-    if (scheduleOnCalendar && dueDate && startTime && endTime) {
-      const startDateTime = `${dueDate}T${startTime}:00`;
-      const endDateTime = `${dueDate}T${endTime}:00`;
-      
-      const calCat = category === 'Meeting' ? 'meeting' : category === 'Evaluasi' ? 'review' : 'deep_work';
-      const calColor = category === 'Meeting' ? '#7c3aed' : category === 'Evaluasi' ? '#d97706' : (priority === 'urgent' ? '#dc2626' : '#2563eb');
+      // 2. Sync with calendar event di Supabase Cloud
+      if (scheduleOnCalendar && dueDate && startTime && endTime) {
+        const startDateTime = `${dueDate}T${startTime}:00`;
+        const endDateTime = `${dueDate}T${endTime}:00`;
+        
+        const calCat = category === 'Meeting' ? 'meeting' : category === 'Evaluasi' ? 'review' : 'deep_work';
+        const calColor = category === 'Meeting' ? '#7c3aed' : category === 'Evaluasi' ? '#d97706' : (priority === 'urgent' ? '#dc2626' : '#2563eb');
 
-      const eventData: CalendarEvent = {
-        id: calEventId!,
-        taskId: taskId,
-        projectId: projectId || undefined,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        category: calCat,
-        isCompleted: status === 'done',
-        color: calColor,
-        createdAt: nowIso,
-        updatedAt: nowIso
-      };
-      await db.calendarEvents.put(eventData);
-      cloudUpsertCalendarEvent(eventData).catch(console.error);
-    } else if (taskToEdit?.calendarEventId && !scheduleOnCalendar) {
-      await db.calendarEvents.delete(taskToEdit.calendarEventId);
-      cloudDeleteCalendarEvent(taskToEdit.calendarEventId).catch(console.error);
+        const eventData: CalendarEvent = {
+          id: calEventId!,
+          taskId: taskId,
+          projectId: projectId || undefined,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          startTime: startDateTime,
+          endTime: endDateTime,
+          category: calCat,
+          isCompleted: status === 'done',
+          color: calColor,
+          createdAt: nowIso,
+          updatedAt: nowIso
+        };
+        await cloudUpsertCalendarEvent(eventData);
+        await db.calendarEvents.put(eventData);
+      } else if (taskToEdit?.calendarEventId && !scheduleOnCalendar) {
+        await cloudDeleteCalendarEvent(taskToEdit.calendarEventId);
+        await db.calendarEvents.delete(taskToEdit.calendarEventId);
+      }
+
+      // 3. Simpan ke local cache untuk responsivitas UI
+      await db.tasks.put(taskData);
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving task to Supabase:', err);
+      alert(`Gagal menyimpan tugas ke Supabase: ${err.message || 'Cek koneksi internet/Supabase Anda.'}`);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -402,9 +414,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shadow-xs flex items-center gap-1.5"
             >
-              {taskToEdit ? 'Simpan Perubahan' : 'Buat Tugas'}
+              {isSubmitting ? 'Menyimpan ke Cloud...' : (taskToEdit ? 'Simpan Perubahan' : 'Buat Tugas')}
             </button>
           </div>
         </form>

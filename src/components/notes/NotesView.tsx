@@ -53,14 +53,24 @@ export const NotesView: React.FC<NotesViewProps> = ({
       isPinned: !note.isPinned,
       updatedAt: new Date().toISOString()
     };
-    await db.notes.put(updatedNote);
-    cloudUpsertNote(updatedNote).catch(console.error);
+    try {
+      await cloudUpsertNote(updatedNote);
+      await db.notes.put(updatedNote);
+    } catch (err: any) {
+      console.error('Gagal memperbarui pin catatan di Supabase:', err);
+      alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   const handleDeleteNote = async (id: string, title: string) => {
     if (window.confirm(`Hapus catatan "${title}"?`)) {
-      await db.notes.delete(id);
-      cloudDeleteNote(id).catch(console.error);
+      try {
+        await cloudDeleteNote(id);
+        await db.notes.delete(id);
+      } catch (err: any) {
+        console.error('Gagal menghapus catatan dari Supabase:', err);
+        alert(`Gagal menghapus catatan dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+      }
     }
   };
 

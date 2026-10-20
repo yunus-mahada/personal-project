@@ -105,11 +105,15 @@ export const SettingsView: React.FC = () => {
         ? existing.goalCategories 
         : categories
     };
-    await db.settings.put(updatedSettings);
-    cloudUpsertSettings(updatedSettings).catch(console.error);
-
-    setSaveStatus('Pengaturan profil berhasil disimpan & disinkronkan!');
-    setTimeout(() => setSaveStatus(null), 3000);
+    try {
+      await cloudUpsertSettings(updatedSettings);
+      await db.settings.put(updatedSettings);
+      setSaveStatus('Pengaturan profil berhasil disimpan & disinkronkan ke Supabase Cloud!');
+    } catch (err: any) {
+      console.error('Gagal menyimpan profil ke Supabase:', err);
+      setSaveStatus(`Gagal menyimpan ke Supabase: ${err.message || 'Cek koneksi'}`);
+    }
+    setTimeout(() => setSaveStatus(null), 3500);
   };
 
   // Add Category
@@ -136,12 +140,16 @@ export const SettingsView: React.FC = () => {
       hasCompletedOnboarding: true,
       goalCategories: updated
     };
-    await db.settings.put(updatedSettings);
-    cloudUpsertSettings(updatedSettings).catch(console.error);
-    cloudUpsertCategory(trimmed).catch(console.error);
-
-    setNewCategoryName('');
-    setNotice({ text: `Kategori "${trimmed}" berhasil ditambahkan & disinkronkan ke Supabase!`, type: 'success' });
+    try {
+      await cloudUpsertSettings(updatedSettings);
+      await cloudUpsertCategory(trimmed);
+      await db.settings.put(updatedSettings);
+      setNewCategoryName('');
+      setNotice({ text: `Kategori "${trimmed}" berhasil ditambahkan & tersimpan di Supabase Cloud!`, type: 'success' });
+    } catch (err: any) {
+      console.error('Gagal menambahkan kategori ke Supabase:', err);
+      setNotice({ text: `Gagal menyimpan ke Supabase: ${err.message || 'Cek koneksi'}`, type: 'error' });
+    }
     setTimeout(() => setNotice(null), 3500);
   };
 
@@ -165,12 +173,16 @@ export const SettingsView: React.FC = () => {
       hasCompletedOnboarding: true,
       goalCategories: updated
     };
-    await db.settings.put(updatedSettings);
-    cloudUpsertSettings(updatedSettings).catch(console.error);
-    cloudDeleteCategory(cat).catch(console.error);
-
-    setCategoryToDelete(null);
-    setNotice({ text: `Kategori "${cat}" berhasil dihapus dari sistem & Supabase.`, type: 'success' });
+    try {
+      await cloudUpsertSettings(updatedSettings);
+      await cloudDeleteCategory(cat);
+      await db.settings.put(updatedSettings);
+      setCategoryToDelete(null);
+      setNotice({ text: `Kategori "${cat}" berhasil dihapus dari sistem & Supabase Cloud.`, type: 'success' });
+    } catch (err: any) {
+      console.error('Gagal menghapus kategori dari Supabase:', err);
+      setNotice({ text: `Gagal menghapus dari Supabase: ${err.message || 'Cek koneksi'}`, type: 'error' });
+    }
     setTimeout(() => setNotice(null), 3500);
   };
 
@@ -182,11 +194,17 @@ export const SettingsView: React.FC = () => {
       id: 'user_default',
       goalCategories: DEFAULT_GOAL_CATEGORIES
     };
-    await db.settings.put(updatedSettings);
-    cloudUpsertSettings(updatedSettings).catch(console.error);
-    DEFAULT_GOAL_CATEGORIES.forEach(cat => cloudUpsertCategory(cat).catch(console.error));
-
-    setNotice({ text: 'Daftar kategori berhasil direset ke standar Personal Project.', type: 'success' });
+    try {
+      await cloudUpsertSettings(updatedSettings);
+      for (const cat of DEFAULT_GOAL_CATEGORIES) {
+        await cloudUpsertCategory(cat);
+      }
+      await db.settings.put(updatedSettings);
+      setNotice({ text: 'Daftar kategori berhasil direset & disinkronkan ke Supabase Cloud.', type: 'success' });
+    } catch (err: any) {
+      console.error('Gagal mereset kategori di Supabase:', err);
+      setNotice({ text: `Gagal menyimpan reset ke Supabase: ${err.message || 'Cek koneksi'}`, type: 'error' });
+    }
     setTimeout(() => setNotice(null), 3500);
   };
 

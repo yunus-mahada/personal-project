@@ -108,15 +108,22 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
     if (!isNaN(num) && num >= 0) {
       const isNowCompleted = num >= goal.targetValue;
       const nowIso = new Date().toISOString();
-      await db.goals.update(goal.id, {
+      const updatedGoal: Goal = {
+        ...goal,
         currentValue: num,
         status: isNowCompleted ? 'completed' : goal.status === 'completed' ? 'on_track' : goal.status,
         updatedAt: nowIso
-      });
-      const g = await db.goals.get(goal.id);
-      if (g) cloudUpsertGoal(g);
-      if (isNowCompleted && goal.status !== 'completed') {
-        confetti({ particleCount: 40, spread: 70, origin: { y: 0.7 } });
+      };
+
+      try {
+        await cloudUpsertGoal(updatedGoal);
+        await db.goals.put(updatedGoal);
+        if (isNowCompleted && goal.status !== 'completed') {
+          confetti({ particleCount: 40, spread: 70, origin: { y: 0.7 } });
+        }
+      } catch (err: any) {
+        console.error('Gagal memperbarui sasaran di Supabase:', err);
+        alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
       }
     }
     setEditingValueId(null);
@@ -124,9 +131,14 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
 
   // Handle inline deletion without window.confirm
   const handleExecuteDelete = async (id: string) => {
-    await db.goals.delete(id);
-    cloudDeleteGoal(id);
-    setConfirmDeleteId(null);
+    try {
+      await cloudDeleteGoal(id);
+      await db.goals.delete(id);
+      setConfirmDeleteId(null);
+    } catch (err: any) {
+      console.error('Gagal menghapus sasaran dari Supabase:', err);
+      alert(`Gagal menghapus sasaran dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+    }
   };
 
   const categories: string[] = settings?.goalCategories && settings.goalCategories.length > 0

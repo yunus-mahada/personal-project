@@ -45,9 +45,11 @@ export const NoteModal: React.FC<NoteModalProps> = ({
     }
   }, [noteToEdit, defaultProjectId, isOpen]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSubmitting) return;
 
     const tags = tagsInput
       .split(',')
@@ -67,9 +69,19 @@ export const NoteModal: React.FC<NoteModalProps> = ({
       updatedAt: nowIso
     };
 
-    await db.notes.put(noteData);
-    cloudUpsertNote(noteData).catch(console.error);
-    onClose();
+    setIsSubmitting(true);
+    try {
+      // 1. Simpan langsung ke Supabase Cloud (Primary Store)
+      await cloudUpsertNote(noteData);
+      // 2. Simpan ke local cache untuk responsivitas UI
+      await db.notes.put(noteData);
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving note to Supabase:', err);
+      alert(`Gagal menyimpan catatan ke Supabase: ${err.message || 'Cek koneksi Supabase Anda'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -195,9 +207,10 @@ export const NoteModal: React.FC<NoteModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shadow-xs flex items-center gap-1.5"
             >
-              {noteToEdit ? 'Simpan Perubahan' : 'Simpan Catatan'}
+              {isSubmitting ? 'Menyimpan ke Cloud...' : (noteToEdit ? 'Simpan Perubahan' : 'Simpan Catatan')}
             </button>
           </div>
         </form>

@@ -327,24 +327,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         completedAt: nextCompleted ? nowIso : undefined,
         updatedAt: nowIso
       };
-      await db.tasks.put(updatedTask);
-      cloudUpsertTask(updatedTask).catch(console.error);
+      try {
+        await cloudUpsertTask(updatedTask);
+        await db.tasks.put(updatedTask);
+      } catch (err: any) {
+        console.error('Gagal memperbarui status tugas di Supabase:', err);
+        alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+        return;
+      }
     } else if (item.sourceType === 'event' && item.rawEvent) {
       const updatedEvent: CalendarEvent = {
         ...item.rawEvent,
         isCompleted: nextCompleted,
         updatedAt: nowIso
       };
-      await db.calendarEvents.put(updatedEvent);
-      cloudUpsertCalendarEvent(updatedEvent).catch(console.error);
+      try {
+        await cloudUpsertCalendarEvent(updatedEvent);
+        await db.calendarEvents.put(updatedEvent);
+      } catch (err: any) {
+        console.error('Gagal memperbarui agenda di Supabase:', err);
+        alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
+        return;
+      }
     } else if (item.sourceType === 'routine' && item.rawRoutine) {
       const targetDate = parseISO(item.dateStr);
       const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(item.rawRoutine, targetDate);
-      await db.routines.put(updatedRoutine);
-      cloudUpsertRoutine(updatedRoutine).catch(console.error);
-
-      if (isNowCompleted) {
-        confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+      try {
+        await cloudUpsertRoutine(updatedRoutine);
+        await db.routines.put(updatedRoutine);
+        if (isNowCompleted) {
+          confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+        }
+      } catch (err: any) {
+        console.error('Gagal memperbarui rutinitas di Supabase:', err);
+        alert(`Gagal menyimpan rutinitas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
       }
       return;
     }
@@ -358,18 +374,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const handleDeleteItem = async (item: UnifiedCalendarItem) => {
     if (item.sourceType === 'task' && item.rawTask) {
       if (window.confirm(`Hapus tugas "${item.title}"?`)) {
-        await db.tasks.delete(item.rawTask.id);
-        cloudDeleteTask(item.rawTask.id).catch(console.error);
+        try {
+          await cloudDeleteTask(item.rawTask.id);
+          await db.tasks.delete(item.rawTask.id);
+        } catch (err: any) {
+          console.error('Gagal menghapus tugas dari Supabase:', err);
+          alert(`Gagal menghapus tugas dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+        }
       }
     } else if (item.sourceType === 'event' && item.rawEvent) {
       if (window.confirm(`Hapus agenda "${item.title}" dari kalender?`)) {
-        await db.calendarEvents.delete(item.rawEvent.id);
-        cloudDeleteCalendarEvent(item.rawEvent.id).catch(console.error);
+        try {
+          await cloudDeleteCalendarEvent(item.rawEvent.id);
+          await db.calendarEvents.delete(item.rawEvent.id);
+        } catch (err: any) {
+          console.error('Gagal menghapus agenda dari Supabase:', err);
+          alert(`Gagal menghapus agenda dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+        }
       }
     } else if (item.sourceType === 'routine' && item.rawRoutine) {
       if (window.confirm(`Hapus rutinitas "${item.title}"?`)) {
-        await db.routines.delete(item.rawRoutine.id);
-        cloudDeleteRoutine(item.rawRoutine.id).catch(console.error);
+        try {
+          await cloudDeleteRoutine(item.rawRoutine.id);
+          await db.routines.delete(item.rawRoutine.id);
+        } catch (err: any) {
+          console.error('Gagal menghapus rutinitas dari Supabase:', err);
+          alert(`Gagal menghapus rutinitas dari Supabase: ${err.message || 'Cek koneksi internet'}`);
+        }
       }
     }
   };
