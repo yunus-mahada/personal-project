@@ -27,7 +27,7 @@ import {
   resetDatabaseWithSamples, 
   resetDatabaseToClean 
 } from '../../db';
-import { PWAInstallButton } from '../pwa/PWAInstallButton';
+import { RealtimeSyncStatus } from '../sync/RealtimeSyncStatus';
 import { DEFAULT_BUSINESS_CATEGORIES } from '../../types';
 import { 
   isSupabaseConfigured, 
@@ -747,25 +747,24 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. PWA & Install Guide Section */}
+          {/* 3. Realtime Supabase Sync Status & Auto-Sync 15s */}
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-xs">
             <h2 className="text-sm font-semibold text-white mb-3 pb-2 border-b border-zinc-800 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-purple-400" />
-              <span>Aplikasi Web Progresif (PWA) & Offline</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Status Sinkronisasi Realtime Supabase (Otomatis 15 Detik)</span>
             </h2>
 
-            <div className="text-xs text-zinc-300 space-y-2">
+            <div className="text-xs text-zinc-300 space-y-2 mb-4">
               <p>
-                Personal Project dirancang dengan arsitektur <strong>Offline-First</strong>. Aplikasi dapat dipasang langsung ke layar utama perangkat desktop, Android, maupun iPhone tanpa memerlukan toko aplikasi pihak ketiga.
+                Sistem secara otomatis menyinkronkan data dengan Supabase Cloud setiap <strong>15 detik di latar belakang</strong> tanpa mengganggu proses penginputan maupun navigasi Anda.
               </p>
-              <p>
-                Semua perubahan data disimpan secara instan ke IndexedDB di browser Anda dan tetap dapat diakses penuh tanpa koneksi internet.
+              <p className="text-zinc-400 text-[11px]">
+                Setiap data yang Anda tambahkan (Proyek, Tugas, Jadwal, Catatan, dan Rutinitas) otomatis tersimpan ganda secara aman pada IndexedDB lokal dan Cloud Database Supabase.
               </p>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between">
-              <span className="text-xs text-zinc-400">Pasang aplikasi ke perangkat:</span>
-              <PWAInstallButton />
+            <div className="pt-2">
+              <RealtimeSyncStatus />
             </div>
           </div>
 

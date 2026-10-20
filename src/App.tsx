@@ -10,10 +10,10 @@ import type {
 import { Menu, Search, Plus } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDatabase } from './db';
-import { isSupabaseConfigured, syncSupabaseToLocal, subscribeToSupabaseRealtime } from './lib/supabase';
 import { Sidebar } from './components/layout/Sidebar';
 import { GlobalSearch } from './components/common/GlobalSearch';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
+import { SyncProvider, useSync } from './context/SyncContext';
 
 // Views
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -33,7 +33,8 @@ import { EventModal } from './components/modals/EventModal';
 import { NoteModal } from './components/modals/NoteModal';
 import { RoutineModal } from './components/modals/RoutineModal';
 
-export default function App() {
+function AppInner() {
+  const { syncState, triggerSync } = useSync();
   const settings = useLiveQuery(() => db.settings.get('user_default'));
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,23 +61,9 @@ export default function App() {
   const [routineModalOpen, setRoutineModalOpen] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<Routine | null>(null);
 
-  // Initialize DB, auto-pull from Supabase cloud on mount, and listen to Realtime
+  // Inisialisasi basis data lokal
   useEffect(() => {
-    let unsubscribeRealtime = () => {};
-
-    initializeDatabase()
-      .then(async () => {
-        if (isSupabaseConfigured()) {
-          console.log('[Supabase Cloud] Inisialisasi sinkronisasi otomatis dari cloud...');
-          await syncSupabaseToLocal();
-          unsubscribeRealtime = subscribeToSupabaseRealtime();
-        }
-      })
-      .catch(console.error);
-
-    return () => {
-      unsubscribeRealtime();
-    };
+    initializeDatabase().catch(console.error);
   }, []);
 
   const handleNavigate = (tab: ActiveTab, itemId?: string) => {
@@ -146,6 +133,37 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Realtime Supabase Sync Indicator */}
+          <button
+            onClick={() => triggerSync().catch(console.error)}
+            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-[#20232a] flex items-center justify-center relative cursor-pointer"
+            title={
+              syncState === 'syncing' 
+                ? 'Sedang menyinkronkan ke Supabase...' 
+                : syncState === 'error'
+                ? 'Sinkronisasi gagal. Klik untuk coba lagi'
+                : 'Realtime Supabase Aktif (Klik untuk sinkronkan manual)'
+            }
+          >
+            <span className="relative flex h-2 w-2">
+              {syncState === 'syncing' ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </>
+              ) : syncState === 'synced' ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </>
+              ) : syncState === 'error' ? (
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+              ) : (
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500" />
+              )}
+            </span>
+          </button>
+
           <button
             onClick={() => setSearchOpen(true)}
             className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-[#20232a]"
@@ -299,5 +317,13 @@ export default function App() {
         routineToEdit={routineToEdit}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <SyncProvider>
+      <AppInner />
+    </SyncProvider>
   );
 }

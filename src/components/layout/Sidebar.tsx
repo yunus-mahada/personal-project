@@ -21,7 +21,7 @@ import { id } from 'date-fns/locale';
 import type { ActiveTab } from '../../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { PWAInstallButton } from '../pwa/PWAInstallButton';
+import { RealtimeSyncStatus } from '../sync/RealtimeSyncStatus';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -173,10 +173,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
 
-          {/* Footer: PWA Install & Database Status */}
+          {/* Footer: Supabase Realtime Sync & Database Status */}
           <div className="mt-auto pt-3 border-t border-[#262b34] space-y-2">
             <div className="w-full">
-              <PWAInstallButton compact />
+              <RealtimeSyncStatus compact />
             </div>
 
             {/* Hari & Tanggal (Live Indonesian Day & Date) */}
