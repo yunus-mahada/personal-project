@@ -373,8 +373,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   // Hapus item
   const handleDeleteItem = async (item: UnifiedCalendarItem) => {
     if (item.sourceType === 'task' && item.rawTask) {
-      if (window.confirm(`Hapus tugas "${item.title}"?`)) {
+      if (window.confirm(`Hapus tugas "${item.title}"? Event kalender terkait juga akan ikut dihapus.`)) {
         try {
+          // Cascade: hapus calendar event jika tugas punya event terhubung
+          if (item.rawTask.calendarEventId) {
+            await cloudDeleteCalendarEvent(item.rawTask.calendarEventId);
+            await db.calendarEvents.delete(item.rawTask.calendarEventId);
+          }
           await cloudDeleteTask(item.rawTask.id);
           await db.tasks.delete(item.rawTask.id);
         } catch (err: any) {
@@ -387,6 +392,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         try {
           await cloudDeleteCalendarEvent(item.rawEvent.id);
           await db.calendarEvents.delete(item.rawEvent.id);
+          // Cascade: jika event ini berasal dari task, hapus task-nya juga
+          if (item.rawEvent.taskId) {
+            await cloudDeleteTask(item.rawEvent.taskId);
+            await db.tasks.delete(item.rawEvent.taskId);
+          }
         } catch (err: any) {
           console.error('Gagal menghapus agenda dari Supabase:', err);
           alert(`Gagal menghapus agenda dari Supabase: ${err.message || 'Cek koneksi internet'}`);

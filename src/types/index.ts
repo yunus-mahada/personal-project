@@ -123,4 +123,5 @@ export type ActiveTab =
   | 'notes' 
   | 'routines' 
   | 'analytics' 
+  | 'coaching'
   | 'settings';

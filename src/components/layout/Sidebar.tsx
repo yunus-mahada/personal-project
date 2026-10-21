@@ -13,7 +13,8 @@ import {
   Plus,
   Search,
   X,
-  Command
+  Command,
+  GraduationCap
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
@@ -62,6 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'notes' as ActiveTab, label: 'Catatan & Dokumen', icon: FileText },
     { id: 'routines' as ActiveTab, label: 'Rutinitas Bisnis', icon: Repeat },
     { id: 'analytics' as ActiveTab, label: 'Analitik Performa', icon: BarChart3 },
+    { id: 'coaching' as ActiveTab, label: 'Coaching & Pengembangan', icon: GraduationCap, badge: 'Baru' as any },
     { id: 'settings' as ActiveTab, label: 'Pengaturan & Backup', icon: Settings },
   ];
 
@@ -163,10 +165,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span className="truncate">{item.label}</span>
                   </div>
                   {item.badge !== undefined && (
-                    <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${isActive ? 'bg-[#333a47] text-zinc-200' : 'bg-[#131518] text-zinc-400 border border-[#2a2f39]'
-                      }`}>
-                      {item.badge}
-                    </span>
+                    typeof item.badge === 'string'
+                      ? (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 tracking-wide uppercase">
+                          {item.badge}
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${isActive ? 'bg-[#333a47] text-zinc-200' : 'bg-[#131518] text-zinc-400 border border-[#2a2f39]'}`}>
+                          {item.badge}
+                        </span>
+                      )
                   )}
                 </button>
               );

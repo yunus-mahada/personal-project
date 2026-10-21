@@ -26,7 +26,7 @@ import {
   EISENHOWER_LABELS,
   TASK_CATEGORY_LABELS
 } from '../../utils/formatters';
-import { cloudUpsertTask, cloudDeleteTask } from '../../lib/supabase';
+import { cloudUpsertTask, cloudDeleteTask, cloudDeleteCalendarEvent } from '../../lib/supabase';
 
 interface TasksViewProps {
   onOpenTaskModal: (task?: Task) => void;
@@ -123,8 +123,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
   };
 
   const handleDeleteTask = async (id: string, title: string) => {
-    if (window.confirm(`Hapus tugas "${title}"?`)) {
+    if (window.confirm(`Hapus tugas "${title}"? Event kalender terkait juga akan ikut dihapus.`)) {
       try {
+        // Cek apakah tugas punya calendar event yang terhubung
+        const taskToDelete = await db.tasks.get(id);
+        if (taskToDelete?.calendarEventId) {
+          await cloudDeleteCalendarEvent(taskToDelete.calendarEventId);
+          await db.calendarEvents.delete(taskToDelete.calendarEventId);
+        }
         await cloudDeleteTask(id);
         await db.tasks.delete(id);
       } catch (err: any) {

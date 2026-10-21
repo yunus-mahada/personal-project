@@ -26,7 +26,7 @@ import {
   PROJECT_STATUS_LABELS, 
   PRIORITY_LABELS 
 } from '../../utils/formatters';
-import { cloudUpsertProject, cloudDeleteProject, cloudUpsertTask } from '../../lib/supabase';
+import { cloudUpsertProject, cloudDeleteProject, cloudUpsertTask, cloudDeleteTask, cloudDeleteCalendarEvent } from '../../lib/supabase';
 
 interface ProjectsViewProps {
   onOpenProjectModal: (proj?: Project) => void;
@@ -142,11 +142,26 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     }
   };
 
-  // Safe delete project without window.confirm
+  // Safe delete project — cascade hapus tasks dan calendar events terkait
   const handleExecuteDelete = async (id: string) => {
     try {
+      // 1. Ambil semua tasks yang terkait dengan project ini
+      const relatedTasks = await db.tasks.where('projectId').equals(id).toArray();
+
+      // 2. Untuk setiap task, hapus calendar event-nya jika ada
+      for (const task of relatedTasks) {
+        if (task.calendarEventId) {
+          await cloudDeleteCalendarEvent(task.calendarEventId).catch(console.error);
+          await db.calendarEvents.delete(task.calendarEventId);
+        }
+        await cloudDeleteTask(task.id).catch(console.error);
+        await db.tasks.delete(task.id);
+      }
+
+      // 3. Hapus project itu sendiri
       await cloudDeleteProject(id);
       await db.projects.delete(id);
+
       setConfirmDeleteId(null);
       if (activeProjectDetail?.id === id) {
         setActiveProjectDetail(null);

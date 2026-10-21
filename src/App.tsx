@@ -23,6 +23,7 @@ import { CalendarView } from './components/calendar/CalendarView';
 import { NotesView } from './components/notes/NotesView';
 import { RoutinesView } from './components/routines/RoutinesView';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
+import { CoachingView } from './components/coaching/CoachingView';
 import { SettingsView } from './components/settings/SettingsView';
 
 // Modals
@@ -243,6 +244,10 @@ function AppInner() {
 
           {activeTab === 'analytics' && (
             <AnalyticsView onNavigate={handleNavigate} />
+          )}
+
+          {activeTab === 'coaching' && (
+            <CoachingView />
           )}
 
           {activeTab === 'settings' && (
