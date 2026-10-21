@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FolderKanban, 
   Plus, 
@@ -59,6 +59,53 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     ? settings.goalCategories
     : [];
 
+  // --- Auto-compute project status based on task completion ---
+  // Helper: determine the correct status for a project based on its tasks
+  const computeAutoStatus = (projectId: string): ProjectStatus => {
+    const pTasks = tasks.filter(t => t.projectId === projectId);
+    if (pTasks.length === 0) return 'planning';
+    const doneCount = pTasks.filter(t => t.isCompleted).length;
+    if (doneCount === pTasks.length) return 'completed';
+    return 'in_progress';
+  };
+
+  // Track which projects we've already synced to avoid infinite loops
+  const syncedRef = useRef<Record<string, ProjectStatus>>({});
+
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const updates: { project: Project; newStatus: ProjectStatus }[] = [];
+
+    for (const p of projects) {
+      const autoStatus = computeAutoStatus(p.id);
+      // Only update if the computed status differs from current AND differs from last synced
+      if (p.status !== autoStatus && syncedRef.current[p.id] !== autoStatus) {
+        updates.push({ project: p, newStatus: autoStatus });
+      }
+    }
+
+    if (updates.length === 0) return;
+
+    // Batch update all projects that need status changes
+    (async () => {
+      for (const { project, newStatus } of updates) {
+        const nowIso = new Date().toISOString();
+        const updated: Project = { ...project, status: newStatus, updatedAt: nowIso };
+        syncedRef.current[project.id] = newStatus;
+        try {
+          await cloudUpsertProject(updated);
+          await db.projects.put(updated);
+          if (newStatus === 'completed') {
+            confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
+          }
+        } catch (err) {
+          console.error('Auto-status sync gagal:', err);
+        }
+      }
+    })();
+  }, [projects, tasks]);
+
   React.useEffect(() => {
     if (initialSelectedId && projects.length > 0) {
       const match = projects.find(p => p.id === initialSelectedId);
@@ -79,28 +126,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     return true;
   });
 
-  // Quick update project status directly from table
-  const handleQuickStatusChange = async (projectId: string, nextStatus: ProjectStatus) => {
-    const existing = await db.projects.get(projectId);
-    if (!existing) return;
-    const nowIso = new Date().toISOString();
-    const updated: Project = {
-      ...existing,
-      status: nextStatus,
-      updatedAt: nowIso
-    };
-
-    try {
-      await cloudUpsertProject(updated);
-      await db.projects.put(updated);
-      if (nextStatus === 'completed') {
-        confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
-      }
-    } catch (err: any) {
-      console.error('Gagal memperbarui status proyek di Supabase:', err);
-      alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
-    }
-  };
+  // Status proyek sekarang ditentukan otomatis berdasarkan progress tugas.
+  // Tidak perlu handleQuickStatusChange lagi.
 
   // Quick update project priority directly from table
   const handleQuickPriorityChange = async (projectId: string, nextPriority: ProjectPriority) => {
@@ -366,7 +393,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <tr className="border-b border-[#262b34] bg-[#14161a] text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                   <th className="py-3 px-4 min-w-[220px]">Nama Proyek</th>
                   <th className="py-3 px-3 min-w-[170px]">Kategori Bisnis</th>
-                  <th className="py-3 px-3 min-w-[170px]">Status (Update Cepat)</th>
+                  <th className="py-3 px-3 min-w-[170px]">Status (Otomatis)</th>
                   <th className="py-3 px-3 min-w-[130px]">Prioritas</th>
                   <th className="py-3 px-3 min-w-[180px]">Tugas Selesai</th>
                   <th className="py-3 px-3 min-w-[120px]">Tenggat</th>
@@ -424,30 +451,35 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         </select>
                       </td>
 
-                      {/* 3. Status (Quick Interactive Dropdown) */}
+                      {/* 3. Status (Otomatis berdasarkan progress tugas) */}
                       <td className="py-3.5 px-3">
-                        <select
-                          value={p.status}
-                          onChange={(e) => handleQuickStatusChange(p.id, e.target.value as ProjectStatus)}
-                          className={`text-xs font-medium rounded-lg px-2.5 py-1 border transition cursor-pointer outline-none ${
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1 border ${
                             p.status === 'completed'
-                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800 hover:bg-emerald-900/60'
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
                               : p.status === 'in_progress'
-                              ? 'bg-blue-950/60 text-blue-300 border-blue-800 hover:bg-blue-900/60'
-                              : p.status === 'review'
-                              ? 'bg-amber-950/60 text-amber-300 border-amber-800 hover:bg-amber-900/60'
+                              ? 'bg-blue-950/60 text-blue-300 border-blue-800'
                               : p.status === 'planning'
-                              ? 'bg-purple-950/60 text-purple-300 border-purple-800 hover:bg-purple-900/60'
+                              ? 'bg-purple-950/60 text-purple-300 border-purple-800'
+                              : p.status === 'review'
+                              ? 'bg-amber-950/60 text-amber-300 border-amber-800'
                               : 'bg-zinc-900 text-zinc-400 border-zinc-700'
                           }`}
-                          title="Ubah status proyek seketika"
+                          title={`Status otomatis: ${pTasks.length === 0 ? 'Belum ada tugas → Perencanaan' : pPercent === 100 ? 'Semua tugas selesai → Selesai' : `${doneCount}/${pTasks.length} selesai → Sedang Berjalan`}`}
                         >
-                          <option value="planning">Perencanaan</option>
-                          <option value="in_progress">Sedang Berjalan</option>
-                          <option value="review">Dalam Tinjauan</option>
-                          <option value="completed">Selesai</option>
-                          <option value="on_hold">Ditunda</option>
-                        </select>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            p.status === 'completed' ? 'bg-emerald-400'
+                            : p.status === 'in_progress' ? 'bg-blue-400 animate-pulse'
+                            : p.status === 'planning' ? 'bg-purple-400'
+                            : p.status === 'review' ? 'bg-amber-400'
+                            : 'bg-zinc-500'
+                          }`} />
+                          {p.status === 'completed' ? 'Selesai'
+                            : p.status === 'in_progress' ? 'Sedang Berjalan'
+                            : p.status === 'planning' ? 'Perencanaan'
+                            : p.status === 'review' ? 'Dalam Tinjauan'
+                            : 'Ditunda'}
+                        </span>
                       </td>
 
                       {/* 4. Prioritas (Quick Interactive Dropdown) */}
@@ -575,26 +607,32 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   {/* Top unboxed metadata */}
                   <div className="flex items-center justify-between text-xs text-zinc-400 pb-3 border-b border-[#262b34]">
                     <span className="font-medium text-zinc-300">{project.category}</span>
-                    <select
-                      value={project.status}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleQuickStatusChange(project.id, e.target.value as ProjectStatus)}
-                      className={`text-xs font-medium rounded px-2 py-0.5 border cursor-pointer ${
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs font-medium rounded px-2 py-0.5 border ${
                         project.status === 'completed'
                           ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
                           : project.status === 'in_progress'
                           ? 'bg-blue-950/60 text-blue-300 border-blue-800'
+                          : project.status === 'planning'
+                          ? 'bg-purple-950/60 text-purple-300 border-purple-800'
                           : project.status === 'review'
                           ? 'bg-amber-950/60 text-amber-300 border-amber-800'
                           : 'bg-zinc-900 text-zinc-400 border-zinc-700'
                       }`}
                     >
-                      <option value="planning">Perencanaan</option>
-                      <option value="in_progress">Sedang Berjalan</option>
-                      <option value="review">Dalam Tinjauan</option>
-                      <option value="completed">Selesai</option>
-                      <option value="on_hold">Ditunda</option>
-                    </select>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        project.status === 'completed' ? 'bg-emerald-400'
+                        : project.status === 'in_progress' ? 'bg-blue-400 animate-pulse'
+                        : project.status === 'planning' ? 'bg-purple-400'
+                        : project.status === 'review' ? 'bg-amber-400'
+                        : 'bg-zinc-500'
+                      }`} />
+                      {project.status === 'completed' ? 'Selesai'
+                        : project.status === 'in_progress' ? 'Sedang Berjalan'
+                        : project.status === 'planning' ? 'Perencanaan'
+                        : project.status === 'review' ? 'Dalam Tinjauan'
+                        : 'Ditunda'}
+                    </span>
                   </div>
 
                   <h3 className="text-sm font-semibold text-white mt-3 group-hover:text-blue-400 transition">
