@@ -296,9 +296,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     if (projects) {
       const cloudIds = new Set(projects.map(p => p.id));
       const localProjects = await db.projects.toArray();
+      // Hapus data lokal yang sudah tidak ada di cloud (sudah dihapus)
       for (const lp of localProjects) {
         if (!cloudIds.has(lp.id)) {
-          await cloudUpsertProject(lp).catch(console.error);
+          await db.projects.delete(lp.id);
         }
       }
       for (const p of projects) {
@@ -321,9 +322,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     if (tasks) {
       const cloudIds = new Set(tasks.map(t => t.id));
       const localTasks = await db.tasks.toArray();
+      // Hapus data lokal yang sudah tidak ada di cloud (sudah dihapus)
       for (const lt of localTasks) {
         if (!cloudIds.has(lt.id)) {
-          await cloudUpsertTask(lt).catch(console.error);
+          await db.tasks.delete(lt.id);
         }
       }
       for (const t of tasks) {
@@ -355,9 +357,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     if (events) {
       const cloudIds = new Set(events.map(e => e.id));
       const localEvents = await db.calendarEvents.toArray();
+      // Hapus data lokal yang sudah tidak ada di cloud (sudah dihapus)
       for (const le of localEvents) {
         if (!cloudIds.has(le.id)) {
-          await cloudUpsertCalendarEvent(le).catch(console.error);
+          await db.calendarEvents.delete(le.id);
         }
       }
       for (const e of events) {
@@ -382,9 +385,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     if (notes) {
       const cloudIds = new Set(notes.map(n => n.id));
       const localNotes = await db.notes.toArray();
+      // Hapus data lokal yang sudah tidak ada di cloud (sudah dihapus)
       for (const ln of localNotes) {
         if (!cloudIds.has(ln.id)) {
-          await cloudUpsertNote(ln).catch(console.error);
+          await db.notes.delete(ln.id);
         }
       }
       for (const n of notes) {
@@ -405,9 +409,10 @@ export async function syncSupabaseToLocal(): Promise<{ success: boolean; message
     if (routines) {
       const cloudIds = new Set(routines.map(r => r.id));
       const localRoutines = await db.routines.toArray();
+      // Hapus data lokal yang sudah tidak ada di cloud (sudah dihapus)
       for (const lr of localRoutines) {
         if (!cloudIds.has(lr.id)) {
-          await cloudUpsertRoutine(lr).catch(console.error);
+          await db.routines.delete(lr.id);
         }
       }
       for (const r of routines) {

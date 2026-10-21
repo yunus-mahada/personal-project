@@ -269,7 +269,17 @@ export const SettingsView: React.FC = () => {
       const content = event.target?.result as string;
       const success = await importDatabaseBackup(content);
       if (success) {
-        setNotice({ text: 'Data cadangan berhasil diimpor ke sistem!', type: 'success' });
+        // Push imported data ke Supabase agar semua anggota tim dapat melihatnya
+        if (isCloudReady) {
+          const res = await syncLocalToSupabase();
+          if (res.success) {
+            setNotice({ text: 'Data cadangan berhasil diimpor & disinkronkan ke Supabase Cloud!', type: 'success' });
+          } else {
+            setNotice({ text: `Data diimpor lokal. Catatan cloud: ${res.message}`, type: 'error' });
+          }
+        } else {
+          setNotice({ text: 'Data cadangan berhasil diimpor ke sistem!', type: 'success' });
+        }
       } else {
         setNotice({ text: 'Gagal mengimpor file. Format data tidak sesuai standar Personal Project.', type: 'error' });
       }
@@ -280,16 +290,44 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleExecuteClear = async () => {
-    await resetDatabaseToClean();
-    setShowClearConfirm(false);
-    setNotice({ text: 'Seluruh data bisnis telah dikosongkan. Sistem sekarang bersih 100%!', type: 'success' });
+    try {
+      // Hapus semua data di Supabase terlebih dahulu
+      if (isCloudReady) {
+        const { supabase } = await import('../../lib/supabase');
+        await Promise.all([
+          supabase.from('projects').delete().neq('id', '___empty___'),
+          supabase.from('tasks').delete().neq('id', '___empty___'),
+          supabase.from('calendar_events').delete().neq('id', '___empty___'),
+          supabase.from('notes').delete().neq('id', '___empty___'),
+          supabase.from('routines').delete().neq('id', '___empty___'),
+        ]);
+      }
+      await resetDatabaseToClean();
+      setShowClearConfirm(false);
+      setNotice({ text: 'Seluruh data bisnis telah dikosongkan dari lokal & Supabase Cloud!', type: 'success' });
+    } catch (err: any) {
+      // Tetap kosongkan lokal meski cloud gagal
+      await resetDatabaseToClean();
+      setShowClearConfirm(false);
+      setNotice({ text: `Data lokal dikosongkan. Catatan cloud: ${err.message || 'Cek koneksi'}`, type: 'error' });
+    }
     setTimeout(() => setNotice(null), 4000);
   };
 
   const handleExecuteReset = async () => {
     await resetDatabaseWithSamples();
     setShowResetConfirm(false);
-    setNotice({ text: 'Database berhasil diisi dengan data percontohan demo Personal Project!', type: 'success' });
+    // Push data demo ke Supabase agar semua anggota tim bisa melihatnya
+    if (isCloudReady) {
+      const res = await syncLocalToSupabase();
+      if (res.success) {
+        setNotice({ text: 'Data percontohan berhasil dimuat & disinkronkan ke Supabase Cloud!', type: 'success' });
+      } else {
+        setNotice({ text: `Data demo dimuat lokal. Catatan cloud: ${res.message}`, type: 'error' });
+      }
+    } else {
+      setNotice({ text: 'Database berhasil diisi dengan data percontohan demo Personal Project!', type: 'success' });
+    }
     setTimeout(() => setNotice(null), 4000);
   };
 
