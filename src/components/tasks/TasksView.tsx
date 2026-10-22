@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   CheckSquare, 
   Plus, 
@@ -12,6 +12,7 @@ import {
   Trash2,
   Users,
   ClipboardCheck,
+  Filter,
   Tag
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -42,22 +43,33 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [filterProject, setFilterProject] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [quickTitle, setQuickTitle] = useState('');
   const [quickCategory, setQuickCategory] = useState<TaskCategory>('Tugas');
 
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
 
+  // Helper: get today's date string YYYY-MM-DD
+  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   // Filter tasks
   const filteredTasks = tasks.filter(t => {
     if (filterProject !== 'all' && t.projectId !== filterProject) return false;
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
     if (filterCategory !== 'all' && (t.category || 'Tugas') !== filterCategory) return false;
+    // Status filter — only applied in table mode
+    if (viewMode === 'table' && filterStatus !== 'all' && t.status !== filterStatus) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = t.title.toLowerCase().includes(q);
       const matchTags = t.tags?.some(tag => tag.toLowerCase().includes(q));
       if (!matchTitle && !matchTags) return false;
+    }
+    // Kanban & Eisenhower: hide tasks completed before today
+    if (viewMode !== 'table' && t.isCompleted && t.completedAt) {
+      const completedDate = t.completedAt.split('T')[0];
+      if (completedDate < todayDateStr) return false;
     }
     return true;
   });
@@ -308,6 +320,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
             <option value="medium">Sedang</option>
             <option value="low">Rendah</option>
           </select>
+
+          {/* Status Filter — only shown in Table mode */}
+          {viewMode === 'table' && (
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-200 cursor-pointer font-medium"
+            >
+              <option value="all">📋 Semua Status ({tasks.length})</option>
+              <option value="todo">⬜ Dikerjakan ({tasks.filter(t => t.status === 'todo').length})</option>
+              <option value="in_progress">🔵 Sedang Berjalan ({tasks.filter(t => t.status === 'in_progress').length})</option>
+              <option value="in_review">🟡 Sedang Ditinjau ({tasks.filter(t => t.status === 'in_review').length})</option>
+              <option value="done">✅ Selesai ({tasks.filter(t => t.status === 'done').length})</option>
+            </select>
+          )}
         </div>
 
         {/* Right: View Mode Toggle */}
