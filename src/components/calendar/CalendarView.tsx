@@ -26,6 +26,7 @@ import {
   format, 
   addMonths, 
   subMonths, 
+  addDays,
   startOfMonth, 
   endOfMonth, 
   startOfWeek, 
@@ -93,7 +94,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onOpenRoutineModal
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date>(() => {
+    const today = new Date();
+    return today.getDay() === 0 ? addDays(today, 1) : today;
+  });
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [includeTasks, setIncludeTasks] = useState<boolean>(true);
   const [includeRoutines, setIncludeRoutines] = useState<boolean>(true);
@@ -108,14 +112,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const handleToday = () => {
     const today = new Date();
     setCurrentDate(today);
-    setSelectedDay(today);
+    setSelectedDay(today.getDay() === 0 ? addDays(today, 1) : today);
   };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 }); // Sunday
+  // Hanya menampilkan hari Senin - Sabtu (Minggu dihilangkan agar lebar grid tanggal lebih luas)
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate }).filter(day => day.getDay() !== 0);
 
   const selectedDayStr = format(selectedDay, 'yyyy-MM-dd');
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -415,7 +420,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-  const weekDayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  const weekDayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
   return (
     <div className="space-y-6">
@@ -643,7 +648,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         {/* Month Calendar Grid */}
         <div className="lg:col-span-2 rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 shadow-xs">
           {/* Day of Week Headers */}
-          <div className="grid grid-cols-7 mb-2 border-b border-zinc-800 pb-2">
+          <div className="grid grid-cols-6 mb-2 border-b border-zinc-800 pb-2">
             {weekDayNames.map((d) => (
               <div key={d} className="text-center text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
                 {d}
@@ -652,7 +657,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
 
           {/* Calendar Days Cells */}
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-6 gap-1.5">
             {calendarDays.map((day) => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const isSelected = isSameDay(day, selectedDay);
