@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
+import { format } from 'date-fns';
 import { db } from '../../db';
 import type { Task, TaskStatus, TaskPriority, EisenhowerQuadrant, TaskCategory } from '../../types';
 import { 
   formatDateIndo, 
   formatMinutes, 
+  isTaskCompletedToday,
   TASK_STATUS_LABELS, 
   PRIORITY_LABELS,
   EISENHOWER_LABELS,
@@ -50,9 +52,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
 
-  // Helper: get today's date string YYYY-MM-DD
-  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-
   // Filter tasks
   const filteredTasks = tasks.filter(t => {
     if (filterProject !== 'all' && t.projectId !== filterProject) return false;
@@ -66,10 +65,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
       const matchTags = t.tags?.some(tag => tag.toLowerCase().includes(q));
       if (!matchTitle && !matchTags) return false;
     }
-    // Kanban & Eisenhower: hide tasks completed before today
-    if (viewMode !== 'table' && t.isCompleted && t.completedAt) {
-      const completedDate = t.completedAt.split('T')[0];
-      if (completedDate < todayDateStr) return false;
+    // Kanban & Eisenhower: pada bagian/status selesai, hanya tampilkan yang selesai per hari ini.
+    // Yang selesai sebelum-sebelumnya jangan ditampilkan.
+    if (viewMode !== 'table') {
+      const isTaskDone = t.status === 'done' || Boolean(t.isCompleted);
+      if (isTaskDone && !isTaskCompletedToday(t)) {
+        return false;
+      }
     }
     return true;
   });
@@ -157,7 +159,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     if (!quickTitle.trim()) return;
 
     const nowIso = new Date().toISOString();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     const newTask: Task = {
       id: `task-${Date.now()}`,
       title: quickTitle.trim(),
@@ -187,7 +189,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     { id: 'todo', title: 'Untuk Dikerjakan', color: 'border-t-zinc-600' },
     { id: 'in_progress', title: 'Sedang Berjalan', color: 'border-t-blue-500' },
     { id: 'in_review', title: 'Dalam Tinjauan', color: 'border-t-amber-500' },
-    { id: 'done', title: 'Selesai', color: 'border-t-emerald-500' },
+    { id: 'done', title: 'Selesai (Hari Ini)', color: 'border-t-emerald-500' },
   ];
 
   const quadrants: EisenhowerQuadrant[] = ['do_first', 'schedule', 'delegate', 'dont_do'];
@@ -404,7 +406,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 <div className="space-y-2.5 min-h-[120px]">
                   {colTasks.length === 0 ? (
                     <div className="py-6 text-center text-[11px] text-zinc-500 italic">
-                      Tidak ada tugas
+                      {col.id === 'done' ? 'Belum ada tugas selesai hari ini' : 'Tidak ada tugas'}
                     </div>
                   ) : (
                     colTasks.map((task) => {

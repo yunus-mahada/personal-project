@@ -65,6 +65,43 @@ export function formatMinutes(minutes?: number): string {
   return remainingMinutes > 0 ? `${hours}j ${remainingMinutes}m` : `${hours}j`;
 }
 
+/**
+ * Cek apakah tugas berstatus selesai dan diselesaikan pada hari ini (local time).
+ * Tugas selesai dari hari-hari sebelumnya akan mengembalikan false.
+ */
+export function isTaskCompletedToday(task: {
+  isCompleted?: boolean;
+  status?: string;
+  completedAt?: string;
+  updatedAt?: string;
+}): boolean {
+  const isDone = task.status === 'done' || Boolean(task.isCompleted);
+  if (!isDone) return false;
+
+  const targetDateStr = task.completedAt || task.updatedAt;
+  if (!targetDateStr) return false;
+
+  try {
+    const parsed = typeof targetDateStr === 'string' ? parseISO(targetDateStr) : new Date(targetDateStr);
+    if (!isNaN(parsed.getTime())) {
+      return isToday(parsed);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const todayLocal = format(new Date(), 'yyyy-MM-dd');
+    if (typeof targetDateStr === 'string' && targetDateStr.startsWith(todayLocal)) {
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
+}
+
 // Status labels & badges in Indonesian
 
 export const PROJECT_STATUS_LABELS: Record<string, { label: string; textClass: string; bgClass: string }> = {
