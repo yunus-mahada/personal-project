@@ -27,6 +27,7 @@ import {
   PRIORITY_LABELS 
 } from '../../utils/formatters';
 import { cloudUpsertProject, cloudDeleteProject, cloudUpsertTask, cloudDeleteTask, cloudDeleteCalendarEvent } from '../../lib/supabase';
+import { toggleTaskCompletion } from '../../utils/taskSync';
 
 interface ProjectsViewProps {
   onOpenProjectModal: (proj?: Project) => void;
@@ -200,20 +201,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   };
 
   const handleToggleTask = async (task: Task) => {
-    const nextCompleted = !task.isCompleted;
-    const nowIso = new Date().toISOString();
-    const updatedTask: Task = {
-      ...task,
-      isCompleted: nextCompleted,
-      status: nextCompleted ? 'done' : 'todo',
-      completedAt: nextCompleted ? nowIso : undefined,
-      updatedAt: nowIso
-    };
-
     try {
-      await cloudUpsertTask(updatedTask);
-      await db.tasks.put(updatedTask);
-      if (nextCompleted) {
+      const { isCompleted } = await toggleTaskCompletion(task);
+      if (isCompleted) {
         confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
       }
     } catch (err: any) {

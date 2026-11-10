@@ -58,6 +58,7 @@ import {
   isDayInMonthRange,
   formatCustomDaysLabel 
 } from '../../utils/routineUtils';
+import { toggleTaskCompletion, toggleEventCompletion } from '../../utils/taskSync';
 
 interface CalendarViewProps {
   onOpenEventModal: (event?: CalendarEvent, defaultDate?: string, defaultTime?: string) => void;
@@ -321,39 +322,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // Toggle Selesai untuk Item (Event, Task, atau Rutinitas)
   const handleToggleItem = async (item: UnifiedCalendarItem) => {
-    const nextCompleted = !item.isCompleted;
-    const nowIso = new Date().toISOString();
-
     if (item.sourceType === 'task' && item.rawTask) {
-      const updatedTask: Task = {
-        ...item.rawTask,
-        isCompleted: nextCompleted,
-        status: nextCompleted ? 'done' : 'todo',
-        completedAt: nextCompleted ? nowIso : undefined,
-        updatedAt: nowIso
-      };
       try {
-        await cloudUpsertTask(updatedTask);
-        await db.tasks.put(updatedTask);
+        const { isCompleted } = await toggleTaskCompletion(item.rawTask);
+        if (isCompleted) {
+          confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+        }
       } catch (err: any) {
         console.error('Gagal memperbarui status tugas di Supabase:', err);
         alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
-        return;
       }
+      return;
     } else if (item.sourceType === 'event' && item.rawEvent) {
-      const updatedEvent: CalendarEvent = {
-        ...item.rawEvent,
-        isCompleted: nextCompleted,
-        updatedAt: nowIso
-      };
       try {
-        await cloudUpsertCalendarEvent(updatedEvent);
-        await db.calendarEvents.put(updatedEvent);
+        const { isCompleted } = await toggleEventCompletion(item.rawEvent);
+        if (isCompleted) {
+          confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+        }
       } catch (err: any) {
         console.error('Gagal memperbarui agenda di Supabase:', err);
         alert(`Gagal menyimpan perubahan ke Supabase: ${err.message || 'Cek koneksi internet'}`);
-        return;
       }
+      return;
     } else if (item.sourceType === 'routine' && item.rawRoutine) {
       const targetDate = parseISO(item.dateStr);
       const { updatedRoutine, isNowCompleted } = toggleRoutineCompletion(item.rawRoutine, targetDate);
@@ -368,10 +358,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         alert(`Gagal menyimpan rutinitas ke Supabase: ${err.message || 'Cek koneksi internet'}`);
       }
       return;
-    }
-
-    if (nextCompleted) {
-      confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
     }
   };
 

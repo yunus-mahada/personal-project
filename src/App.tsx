@@ -202,6 +202,8 @@ function AppInner() {
               onOpenTaskModal={handleOpenTaskModal}
               onOpenProjectModal={handleOpenProjectModal}
               onOpenEventModal={handleOpenEventModal}
+              onOpenRoutineModal={handleOpenRoutineModal}
+              onOpenNoteModal={handleOpenNoteModal}
             />
           )}
 

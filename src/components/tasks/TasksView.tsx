@@ -30,6 +30,7 @@ import {
   TASK_CATEGORY_LABELS
 } from '../../utils/formatters';
 import { cloudUpsertTask, cloudDeleteTask, cloudDeleteCalendarEvent } from '../../lib/supabase';
+import { toggleTaskCompletion, updateTaskStatus } from '../../utils/taskSync';
 
 interface TasksViewProps {
   onOpenTaskModal: (task?: Task) => void;
@@ -77,19 +78,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
   });
 
   const handleToggleTask = async (task: Task) => {
-    const nextCompleted = !task.isCompleted;
-    const nowIso = new Date().toISOString();
-    const updatedTask: Task = {
-      ...task,
-      isCompleted: nextCompleted,
-      status: nextCompleted ? 'done' : 'todo',
-      completedAt: nextCompleted ? nowIso : undefined,
-      updatedAt: nowIso
-    };
     try {
-      await cloudUpsertTask(updatedTask);
-      await db.tasks.put(updatedTask);
-      if (nextCompleted) {
+      const { isCompleted } = await toggleTaskCompletion(task);
+      if (isCompleted) {
         confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
       }
     } catch (err: any) {
@@ -99,19 +90,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
   };
 
   const handleMoveStatus = async (task: Task, nextStatus: TaskStatus) => {
-    const nowIso = new Date().toISOString();
-    const isDone = nextStatus === 'done';
-    const updatedTask: Task = {
-      ...task,
-      status: nextStatus,
-      isCompleted: isDone,
-      completedAt: isDone ? nowIso : undefined,
-      updatedAt: nowIso
-    };
     try {
-      await cloudUpsertTask(updatedTask);
-      await db.tasks.put(updatedTask);
-      if (isDone) {
+      const updated = await updateTaskStatus(task, nextStatus);
+      if (updated.isCompleted) {
         confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
       }
     } catch (err: any) {
