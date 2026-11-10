@@ -23,7 +23,9 @@ import {
   Pin,
   Edit3,
   ExternalLink,
-  Target
+  Target,
+  Table as TableIcon,
+  Search
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
@@ -70,6 +72,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [quickTaskPriority, setQuickTaskPriority] = useState<'urgent' | 'high' | 'medium' | 'low'>('high');
   const [quickTaskCategory, setQuickTaskCategory] = useState<'Tugas' | 'Meeting' | 'Evaluasi'>('Tugas');
   const [routineTab, setRoutineTab] = useState<RoutineCadenceTab>('all');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
+  const [projectSearchQuery, setProjectSearchQuery] = useState('');
 
   const settings = useLiveQuery(() => db.settings.get('user_default'));
   const projects = useLiveQuery(() => db.projects.toArray()) ?? [];
@@ -95,8 +99,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? 'Selamat sore' 
     : 'Selamat malam';
 
-  // 1. Projects Metrics
+  // 1. Projects Metrics & Filter
   const activeProjects = projects.filter(p => p.status !== 'completed' && p.status !== 'on_hold');
+
+  const filteredDashboardProjects = projects.filter(p => {
+    if (projectStatusFilter === 'in_progress' && (p.status === 'completed' || p.status === 'on_hold')) return false;
+    if (projectStatusFilter === 'completed' && p.status !== 'completed') return false;
+    if (projectSearchQuery.trim()) {
+      const q = projectSearchQuery.toLowerCase();
+      const matchTitle = p.title.toLowerCase().includes(q);
+      const matchCat = p.category?.toLowerCase().includes(q);
+      const matchDesc = p.description?.toLowerCase().includes(q);
+      if (!matchTitle && !matchCat && !matchDesc) return false;
+    }
+    return true;
+  });
 
   // 2. Tasks Metrics
   const pendingTasks = tasks.filter(t => !t.isCompleted);
@@ -1234,27 +1251,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 5. Inisiatif Proyek Unggulan (Executive Spotlight Grid) */}
+      {/* 5. Diagram & Tabel Progres Proyek (Diagram Tabel Project) */}
       <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/90">
+        {/* Header & Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-zinc-800/90">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-              <FolderKanban className="w-4 h-4 text-blue-400" />
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <TableIcon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                Inisiatif Proyek &amp; Progres Eksekusi
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  Diagram &amp; Tabel Progres Proyek
+                </h2>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                  {projects.length} Total Proyek
+                </span>
+              </div>
               <p className="text-[11px] text-zinc-400">
-                Pantau progres milestone, status pengerjaan, dan tenggat waktu proyek aktif
+                Pantau rincian proyek, diagram progres milestone, status pengerjaan, dan tenggat waktu secara real-time
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter Status Pills */}
+            <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+              <button
+                onClick={() => setProjectStatusFilter('all')}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                  projectStatusFilter === 'all'
+                    ? 'bg-zinc-800 text-white font-semibold shadow-xs'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Semua ({projects.length})
+              </button>
+              <button
+                onClick={() => setProjectStatusFilter('in_progress')}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                  projectStatusFilter === 'in_progress'
+                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                    : 'text-blue-400 hover:text-blue-300'
+                }`}
+              >
+                Sedang Berjalan ({activeProjects.length})
+              </button>
+              <button
+                onClick={() => setProjectStatusFilter('completed')}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                  projectStatusFilter === 'completed'
+                    ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                    : 'text-emerald-400 hover:text-emerald-300'
+                }`}
+              >
+                Selesai ({projects.filter(p => p.status === 'completed').length})
+              </button>
+            </div>
+
+            {/* Quick Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari proyek..."
+                value={projectSearchQuery}
+                onChange={(e) => setProjectSearchQuery(e.target.value)}
+                className="pl-8 pr-3 py-1 text-xs rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 outline-none focus:border-blue-500 transition w-32 sm:w-40"
+              />
+            </div>
+
+            {/* Navigation & Action */}
             <button
               onClick={() => onNavigate('projects')}
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer transition"
+              className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer transition px-2 py-1 rounded hover:bg-zinc-800"
             >
               <span>Kelola Semua ({projects.length})</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1269,102 +1339,160 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {projects.length === 0 ? (
+        {/* Diagram Table Content */}
+        {filteredDashboardProjects.length === 0 ? (
           <div className="py-10 text-center rounded-xl bg-zinc-950/40 border border-dashed border-zinc-800 p-6 space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-800/60 flex items-center justify-center mx-auto text-zinc-500">
-              <FolderKanban className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-zinc-800/60 flex items-center justify-center mx-auto text-zinc-500">
+              <FolderKanban className="w-5 h-5" />
             </div>
-            <div className="max-w-sm mx-auto">
-              <p className="text-xs font-semibold text-zinc-200">Belum ada inisiatif proyek</p>
-              <p className="text-[11px] text-zinc-400 mt-1">
-                Buat proyek baru untuk mengorganisir tugas operasional, kategori bisnis, dan tenggat waktu.
-              </p>
-            </div>
-            <button
-              onClick={() => onOpenProjectModal()}
-              className="mt-2 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Buat Proyek Pertama</span>
-            </button>
+            <p className="text-xs font-semibold text-zinc-200">
+              {projects.length === 0 ? 'Belum ada inisiatif proyek' : 'Tidak ada proyek yang sesuai filter'}
+            </p>
+            {projects.length === 0 && (
+              <button
+                onClick={() => onOpenProjectModal()}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Buat Proyek Pertama</span>
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.slice(0, 3).map((proj) => {
-              const projTasks = tasks.filter(t => t.projectId === proj.id);
-              const doneCount = projTasks.filter(t => t.isCompleted).length;
-              const percent = projTasks.length > 0 ? Math.round((doneCount / projTasks.length) * 100) : 0;
-              const statusInfo = PROJECT_STATUS_LABELS[proj.status];
+          <div className="rounded-xl bg-zinc-950/70 border border-zinc-800/90 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    <th className="py-3 px-4 min-w-[220px]">Nama Proyek</th>
+                    <th className="py-3 px-3 min-w-[130px]">Kategori Bisnis</th>
+                    <th className="py-3 px-4 min-w-[220px]">Diagram Progres Eksekusi</th>
+                    <th className="py-3 px-3 min-w-[140px]">Status</th>
+                    <th className="py-3 px-3 min-w-[100px]">Prioritas</th>
+                    <th className="py-3 px-3 min-w-[120px]">Tenggat Waktu</th>
+                    <th className="py-3 px-4 text-right min-w-[130px]">Aksi Cepat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/70 text-xs">
+                  {filteredDashboardProjects.map((proj) => {
+                    const projTasks = tasks.filter(t => t.projectId === proj.id);
+                    const doneCount = projTasks.filter(t => t.isCompleted).length;
+                    const percent = projTasks.length > 0 ? Math.round((doneCount / projTasks.length) * 100) : 0;
+                    const statusInfo = PROJECT_STATUS_LABELS[proj.status];
+                    const priorityInfo = PRIORITY_LABELS[proj.priority];
 
-              return (
-                <div 
-                  key={proj.id} 
-                  className="flex flex-col justify-between p-4 rounded-xl bg-zinc-950/70 border border-zinc-800/90 hover:border-zinc-700 transition-all duration-200 group shadow-xs"
-                >
-                  <div>
-                    {/* Top Category & Status Header */}
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[10px] font-semibold tracking-wider uppercase text-blue-400 bg-blue-950/70 border border-blue-900/50 px-2 py-0.5 rounded-md inline-block max-w-[170px] truncate">
-                        {proj.category || 'Umum'}
-                      </span>
-                      <span className={`text-[11px] font-medium shrink-0 px-2 py-0.5 rounded-full ${statusInfo?.bgClass} ${statusInfo?.textClass}`}>
-                        {statusInfo?.label || proj.status}
-                      </span>
-                    </div>
-
-                    {/* Title & Description */}
-                    <h3 
-                      onClick={() => onNavigate('projects', proj.id)}
-                      className="text-sm font-semibold text-zinc-100 mt-2.5 hover:text-blue-400 transition cursor-pointer line-clamp-1 group-hover:text-blue-300"
-                    >
-                      {proj.title}
-                    </h3>
-                    <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 min-h-[32px] leading-relaxed">
-                      {proj.description || 'Tidak ada deskripsi proyek.'}
-                    </p>
-
-                    {/* Progress Bar & Ratio */}
-                    <div className="mt-3.5">
-                      <div className="flex justify-between text-[11px] text-zinc-400 mb-1.5">
-                        <span className="tabular-nums">
-                          {doneCount} dari {projTasks.length} tugas selesai
-                        </span>
-                        <span className="font-bold tabular-nums text-zinc-200">{percent}%</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-zinc-800/90 overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Footer: Deadline & Quick Actions */}
-                  <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                      <span>{formatDateIndo(proj.dueDate)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => onOpenTaskModal(undefined, proj.id)}
-                        className="text-blue-400 hover:text-blue-300 font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition"
+                    return (
+                      <tr 
+                        key={proj.id}
+                        className="hover:bg-zinc-900/50 transition group"
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>Tugas</span>
-                      </button>
-                      <button
-                        onClick={() => onNavigate('projects', proj.id)}
-                        className="text-zinc-400 hover:text-zinc-200 font-medium text-[11px] flex items-center cursor-pointer transition"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                        {/* 1. Nama Proyek & Deskripsi */}
+                        <td className="py-3.5 px-4">
+                          <div className="min-w-0 max-w-xs">
+                            <button
+                              onClick={() => onNavigate('projects', proj.id)}
+                              className="font-semibold text-zinc-100 hover:text-blue-400 text-left transition truncate block cursor-pointer"
+                              title="Klik untuk membuka detail proyek"
+                            >
+                              {proj.title}
+                            </button>
+                            {proj.description && (
+                              <p className="text-[11px] text-zinc-400 truncate mt-0.5" title={proj.description}>
+                                {proj.description}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 2. Kategori Bisnis */}
+                        <td className="py-3.5 px-3">
+                          <span className="text-[10px] font-semibold tracking-wider uppercase text-blue-400 bg-blue-950/70 border border-blue-900/50 px-2 py-0.5 rounded-md inline-block max-w-[130px] truncate">
+                            {proj.category || 'Umum'}
+                          </span>
+                        </td>
+
+                        {/* 3. Diagram Progres Eksekusi (Visual Diagram Progress Bar) */}
+                        <td className="py-3.5 px-4">
+                          <div className="space-y-1.5 max-w-[200px]">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-zinc-400 tabular-nums">
+                                {doneCount} dari {projTasks.length} tugas selesai
+                              </span>
+                              <span className={`font-bold tabular-nums ${percent === 100 ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                                {percent}%
+                              </span>
+                            </div>
+                            <div className="h-2 w-full rounded-full bg-zinc-800/90 overflow-hidden shadow-inner">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  percent === 100
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                    : percent >= 50
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-500'
+                                    : 'bg-gradient-to-r from-blue-500 to-blue-400'
+                                }`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 4. Status Proyek */}
+                        <td className="py-3.5 px-3">
+                          <span className={`text-[11px] font-medium shrink-0 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 border border-zinc-700/40 ${statusInfo?.bgClass} ${statusInfo?.textClass}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              proj.status === 'completed' 
+                                ? 'bg-emerald-400' 
+                                : proj.status === 'in_progress' 
+                                ? 'bg-blue-400' 
+                                : 'bg-zinc-400'
+                            }`} />
+                            <span>{statusInfo?.label || proj.status}</span>
+                          </span>
+                        </td>
+
+                        {/* 5. Prioritas */}
+                        <td className="py-3.5 px-3">
+                          <span className={`text-[11px] font-semibold ${priorityInfo?.textClass}`}>
+                            {priorityInfo?.label || proj.priority}
+                          </span>
+                        </td>
+
+                        {/* 6. Tenggat Waktu */}
+                        <td className="py-3.5 px-3 text-[11px] text-zinc-400">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Clock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                            <span>{formatDateIndo(proj.dueDate)}</span>
+                          </div>
+                        </td>
+
+                        {/* 7. Aksi Cepat */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => onOpenTaskModal(undefined, proj.id)}
+                              className="px-2 py-1 text-[11px] font-semibold text-blue-400 hover:text-white hover:bg-blue-600/30 border border-blue-900/60 rounded-md transition flex items-center gap-1 cursor-pointer"
+                              title="Tambah tugas ke proyek ini"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Tugas</span>
+                            </button>
+                            <button
+                              onClick={() => onNavigate('projects', proj.id)}
+                              className="px-2 py-1 text-[11px] font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition flex items-center gap-0.5 cursor-pointer"
+                              title="Buka rincian proyek"
+                            >
+                              <span>Buka</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
